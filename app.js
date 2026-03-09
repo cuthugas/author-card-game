@@ -1,14 +1,59 @@
 ﻿const MAX_INSPIRATION = 5;
 const STARTING_REPUTATION = 15;
 const STARTING_HAND = 5;
+const KNOWLEDGE_TO_WIN = 10;
+const QUICK_CHECK_EVERY_TURNS = 3;
+
+const AUTHOR_PROFILES = {
+  Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
+  "Lewis Carroll": { passive: "Wonderland-aligned characters gain +1 MEM when summoned.", bonusTag: "wonderland" },
+};
+
+const MATCH_THEMES = [
+  { key: "ambition", label: "Theme: Ambition", description: "Reward cards tied to ambition and power struggles." },
+  { key: "identity", label: "Theme: Identity", description: "Reward cards about selfhood and transformation." },
+  { key: "power", label: "Theme: Power", description: "Reward authority, leadership, and control effects." },
+  { key: "curiosity", label: "Theme: Curiosity", description: "Reward exploration, wonder, and questioning." },
+];
+
+const QUICK_CHECK_BANK = [
+  {
+    question: "Who wrote Macbeth?",
+    options: ["William Shakespeare", "Lewis Carroll", "Mary Shelley"],
+    correctIndex: 0,
+    explanation: "Macbeth is a tragedy by Shakespeare.",
+  },
+  {
+    question: "Which character belongs to Lewis Carroll's Wonderland world?",
+    options: ["Prospero", "Hamlet", "Cheshire Cat"],
+    correctIndex: 2,
+    explanation: "The Cheshire Cat is from Alice's Adventures in Wonderland.",
+  },
+  {
+    question: "What is a soliloquy?",
+    options: ["A private speech revealing thoughts", "A poem with 14 lines", "A speech by two people"],
+    correctIndex: 0,
+    explanation: "A soliloquy lets the audience hear a character's inner thoughts.",
+  },
+  {
+    question: "Who wrote Alice's Adventures in Wonderland?",
+    options: ["Jane Austen", "Lewis Carroll", "Charles Dickens"],
+    correctIndex: 1,
+    explanation: "Lewis Carroll wrote Alice's Adventures in Wonderland.",
+  },
+];
 
 const refs = {
   aiRep: document.getElementById("ai-rep"),
   aiInsp: document.getElementById("ai-insp"),
+  aiKnowledge: document.getElementById("ai-knowledge"),
+  aiAuthor: document.getElementById("ai-author"),
   aiDeck: document.getElementById("ai-deck"),
   aiHand: document.getElementById("ai-hand"),
   playerRep: document.getElementById("player-rep"),
   playerInsp: document.getElementById("player-insp"),
+  playerKnowledge: document.getElementById("player-knowledge"),
+  playerAuthor: document.getElementById("player-author"),
   playerDeck: document.getElementById("player-deck"),
   playerHand: document.getElementById("player-hand"),
   aiBoard: document.getElementById("ai-board"),
@@ -16,6 +61,7 @@ const refs = {
   playerHandCards: document.getElementById("player-hand-cards"),
   turnLabel: document.getElementById("turn-label"),
   phaseLabel: document.getElementById("phase-label"),
+  themeLabel: document.getElementById("theme-label"),
   drawBtn: document.getElementById("draw-btn"),
   endTurnBtn: document.getElementById("end-turn-btn"),
   log: document.getElementById("log"),
@@ -26,46 +72,40 @@ const refs = {
   fxLayer: document.getElementById("fx-layer"),
   aiPanel: document.getElementById("ai-panel"),
   playerPanel: document.getElementById("player-panel"),
+  quizModal: document.getElementById("quiz-modal"),
+  quizTitle: document.getElementById("quiz-title"),
+  quizQuestion: document.getElementById("quiz-question"),
+  quizOptions: document.getElementById("quiz-options"),
   cardTemplate: document.getElementById("card-template"),
 };
 
 const cardPool = [
-  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", cost: 2, attack: 3, defense: 2, memorability: 3, text: "Balanced duelist." },
-  { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, text: "High risk attacker." },
-  { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, text: "Solid control body." },
-  { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, text: "Durable late-game card." },
-  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, text: "Sticky battlefield presence." },
-  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, text: "Hard to remove efficiently." },
-  { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, text: "Pressure card." },
-  { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, text: "Big finisher." },
-  { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", author: "Literary Device", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, text: "Best ally gains +2 ATK and +1 MEM." },
-  { key: "soliloquy", name: "Soliloquy", type: "plot", author: "Literary Device", cost: 2, effect: "damage_enemy_top_attack", value: 3, text: "Deal 3 damage to strongest enemy." },
-  { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Wonderland", cost: 3, effect: "destroy_enemy_lowest_mem", text: "Destroy weakest enemy character." },
-  { key: "o_happy_dagger", name: "O Happy Dagger", type: "artifact", author: "Shakespeare", cost: 1, effect: "damage_enemy_writer", value: 2, text: "Deal 2 to enemy Reputation." },
-  { key: "yoricks_skull", name: "Yorick's Skull", type: "artifact", author: "Shakespeare", cost: 2, effect: "resurrect_character", text: "Return a character from discard to hand." },
-  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Wonderland", cost: 2, effect: "draw_cards", value: 2, text: "Draw 2 cards." },
-  { key: "revision", name: "Revision", type: "plot", author: "Writing", cost: 2, effect: "heal_self", value: 3, text: "Restore 3 Reputation." },
-  { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Writing", cost: 1, effect: "gain_inspiration", value: 2, text: "Gain +2 Inspiration this turn." },
-  { key: "tea_party_chaos", name: "Tea Party Chaos", type: "plot", author: "Wonderland", cost: 3, effect: "weaken_enemy_all", value: 1, text: "All enemies lose 1 ATK (min 1)." },
-  { key: "critical_essay", name: "Critical Essay", type: "plot", author: "Classroom", cost: 1, effect: "draw_cards", value: 1, text: "Draw 1 card." },
+  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", cost: 2, attack: 3, defense: 2, memorability: 3, themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Represents indecision, revenge, and moral conflict.", effectText: "Balanced duelist." },
+  { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "High-risk attacker." },
+  { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Embodies persuasion, guilt, and ambition.", effectText: "Solid control body." },
+  { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "Durable late-game character." },
+  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "Sticky battlefield presence." },
+  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "Hard to remove efficiently." },
+  { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Parodies arbitrary authority.", effectText: "Pressure card." },
+  { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "Big finisher." },
+  { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", subtype: "literary_device", author: "Literary Device", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, themes: ["power", "identity"], who: "A poetic meter of five unstressed/stressed pairs per line.", why: "Key rhythm used in Shakespeare's dramatic verse.", effectText: "Best ally gains +2 ATK and +1 MEM.", quiz: { question: "What is iambic pentameter?", options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"], correctIndex: 0, explanation: "Iambic pentameter is a 10-syllable line with five iambs." } },
+  { key: "soliloquy", name: "Soliloquy", type: "plot", subtype: "literary_device", author: "Literary Device", cost: 2, effect: "damage_enemy_top_attack", value: 3, themes: ["identity", "ambition"], who: "A speech where a character reveals inner thoughts aloud.", why: "Used in drama to expose motivation and conflict.", effectText: "Deal 3 damage to strongest enemy.", quiz: { question: "What does a soliloquy reveal?", options: ["A character's inner thoughts", "A chorus response", "A stage direction"], correctIndex: 0, explanation: "A soliloquy reveals what a character is thinking privately." } },
+  { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Wonderland", cost: 3, effect: "destroy_enemy_lowest_mem", themes: ["curiosity", "power"], who: "Reference to the Vorpal Sword in Jabberwocky.", why: "Connects nonsense verse and heroic quest language.", effectText: "Destroy weakest enemy character." },
+  { key: "o_happy_dagger", name: "O Happy Dagger", type: "artifact", author: "Shakespeare", cost: 1, effect: "damage_enemy_writer", value: 2, themes: ["tragedy", "ambition"], who: "Allusion to Juliet's final line in Romeo and Juliet.", why: "Highlights tragic climax and symbolism.", effectText: "Deal 2 to enemy Reputation." },
+  { key: "yoricks_skull", name: "Yorick's Skull", type: "artifact", author: "Shakespeare", cost: 2, effect: "resurrect_character", themes: ["identity", "tragedy"], who: "Skull held by Hamlet in Act V.", why: "Symbolizes mortality and memory.", effectText: "Return a character from discard to hand." },
+  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Wonderland", cost: 2, effect: "draw_cards", value: 2, themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "Draw 2 cards." },
+  { key: "revision", name: "Revision", type: "plot", author: "Writing", cost: 2, effect: "heal_self", value: 3, themes: ["identity"], who: "Reworking ideas after feedback.", why: "Shows growth and deeper understanding in writing.", effectText: "Restore 3 Reputation." },
+  { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Writing", cost: 1, effect: "gain_inspiration", value: 2, themes: ["power", "ambition"], who: "Focused push to finish written work.", why: "Represents urgency and productivity pressure.", effectText: "Gain +2 Inspiration this turn." },
+  { key: "tea_party_chaos", name: "Tea Party Chaos", type: "plot", author: "Wonderland", cost: 3, effect: "weaken_enemy_all", value: 1, themes: ["curiosity", "wonderland"], who: "Mad Tea Party scene.", why: "Highlights absurd logic and social satire.", effectText: "All enemies lose 1 ATK (min 1)." },
+  { key: "critical_essay", name: "Critical Essay", type: "plot", author: "Classroom", cost: 1, effect: "draw_cards", value: 1, themes: ["identity", "power"], who: "Analytical writing about literature.", why: "Builds evidence-based interpretation.", effectText: "Draw 1 card." },
 ];
 
 let uid = 1;
 let state;
 let prevBoardUids = { player: new Set(), ai: new Set() };
 
-function newPlayer(name) {
-  return {
-    name,
-    reputation: STARTING_REPUTATION,
-    maxInspiration: 0,
-    inspiration: 0,
-    deck: createDeck(),
-    hand: [],
-    board: [],
-    discard: [],
-    hasDrawnThisTurn: false,
-  };
+function newPlayer(name, activeAuthor) {
+  return { name, reputation: STARTING_REPUTATION, maxInspiration: 0, inspiration: 0, knowledge: 0, activeAuthor, deck: createDeck(), hand: [], board: [], discard: [], hasDrawnThisTurn: false };
 }
 
 function createDeck() {
@@ -73,7 +113,7 @@ function createDeck() {
 }
 
 function cloneCardTemplate(card) {
-  const cloned = { ...card, value: card.value && typeof card.value === "object" ? { ...card.value } : card.value };
+  const cloned = { ...card, themes: card.themes ? [...card.themes] : [], quiz: card.quiz ? { ...card.quiz, options: [...card.quiz.options] } : null, value: card.value && typeof card.value === "object" ? { ...card.value } : card.value };
   cloned.uid = `${card.key}_${uid++}`;
   if (cloned.type === "character") {
     cloned.currentMemorability = cloned.memorability;
@@ -91,25 +131,24 @@ function shuffle(list) {
   return arr;
 }
 
-function initGame() {
-  state = {
-    turn: 1,
-    currentPlayer: "player",
-    winner: null,
-    selectedAttackerUid: null,
-    player: newPlayer("You"),
-    ai: newPlayer("AI"),
-  };
+function randomTheme() {
+  return MATCH_THEMES[Math.floor(Math.random() * MATCH_THEMES.length)];
+}
 
-  prevBoardUids = { player: new Set(), ai: new Set() };
-  refs.log.innerHTML = "";
-  hideWinnerBanner();
+function panelForOwner(ownerKey) {
+  return ownerKey === "player" ? refs.playerPanel : refs.aiPanel;
+}
 
-  drawCards(state.player, STARTING_HAND);
-  drawCards(state.ai, STARTING_HAND);
-  beginTurn("player");
-  logEvent("New match started. Classroom Mode active.");
-  render();
+function getCardCost(owner, card) {
+  if (card.type === "character" && card.author === owner.activeAuthor) return Math.max(0, card.cost - 1);
+  return card.cost;
+}
+
+function addKnowledge(ownerKey, amount, reason) {
+  const owner = state[ownerKey];
+  owner.knowledge += amount;
+  spawnFloatingFx(`+${amount} Knowledge`, panelForOwner(ownerKey), "heal");
+  logEvent(`${owner.name} gains ${amount} Knowledge (${reason}).`);
 }
 
 function showWinnerBanner() {
@@ -120,6 +159,28 @@ function showWinnerBanner() {
 
 function hideWinnerBanner() {
   refs.winnerBanner.classList.add("hidden");
+}
+
+function hideQuizModal() {
+  refs.quizModal.classList.add("hidden");
+  refs.quizQuestion.textContent = "";
+  refs.quizOptions.innerHTML = "";
+}
+
+function initGame() {
+  state = { turn: 1, currentPlayer: "player", winner: null, selectedAttackerUid: null, pendingQuiz: false, matchTheme: randomTheme(), player: newPlayer("You", "Shakespeare"), ai: newPlayer("AI", "Lewis Carroll") };
+  prevBoardUids = { player: new Set(), ai: new Set() };
+  refs.log.innerHTML = "";
+  hideWinnerBanner();
+  hideQuizModal();
+  drawCards(state.player, STARTING_HAND);
+  drawCards(state.ai, STARTING_HAND);
+  beginTurn("player");
+  logEvent("New match started. Classroom Mode active.");
+  logEvent(`Theme objective: ${state.matchTheme.label}. ${state.matchTheme.description}`);
+  logEvent(`Your Active Author: ${state.player.activeAuthor} (${AUTHOR_PROFILES[state.player.activeAuthor].passive})`);
+  logEvent(`AI Active Author: ${state.ai.activeAuthor} (${AUTHOR_PROFILES[state.ai.activeAuthor].passive})`);
+  render();
 }
 
 function drawCards(owner, count = 1) {
@@ -147,7 +208,6 @@ function beginTurn(side) {
     card.exhausted = false;
   });
   state.selectedAttackerUid = null;
-
   logEvent(`${side === "player" ? "Your turn" : "AI turn"}: Inspiration refilled to ${owner.inspiration}.`);
 }
 
@@ -174,24 +234,112 @@ function cardElementByUid(uidValue) {
   return document.querySelector(`[data-card-uid="${uidValue}"]`);
 }
 
-function playCard(ownerKey, handIndex) {
-  if (state.winner) return;
+async function askQuizPlayer(quiz, title = "Quick Check") {
+  state.pendingQuiz = true;
+  render();
+  refs.quizTitle.textContent = title;
+  refs.quizQuestion.textContent = quiz.question;
+  refs.quizOptions.innerHTML = "";
+  refs.quizModal.classList.remove("hidden");
+
+  return new Promise((resolve) => {
+    quiz.options.forEach((opt, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "quiz-option";
+      btn.type = "button";
+      btn.textContent = opt;
+      btn.addEventListener("click", () => {
+        const buttons = [...refs.quizOptions.querySelectorAll("button")];
+        buttons.forEach((b, i) => {
+          b.disabled = true;
+          if (i === quiz.correctIndex) b.classList.add("correct");
+        });
+        const isCorrect = idx === quiz.correctIndex;
+        if (!isCorrect) btn.classList.add("incorrect");
+        setTimeout(() => {
+          hideQuizModal();
+          state.pendingQuiz = false;
+          resolve(isCorrect);
+        }, 550);
+      });
+      refs.quizOptions.appendChild(btn);
+    });
+  });
+}
+
+async function resolveKnowledgeCheck(ownerKey, quiz, title) {
+  if (ownerKey === "ai") {
+    const correct = Math.random() < 0.65;
+    if (correct) addKnowledge("ai", 1, "correct literary response");
+    logEvent(`AI ${correct ? "answers" : "misses"} a literary check.`);
+    return;
+  }
+  const correct = await askQuizPlayer(quiz, title);
+  if (correct) {
+    addKnowledge("player", 1, "correct literary response");
+    state.player.inspiration = Math.min(MAX_INSPIRATION, state.player.inspiration + 1);
+    spawnFloatingFx("+1 Insp", refs.playerPanel, "info");
+    logEvent(`Correct. ${quiz.explanation}`);
+  } else {
+    logEvent(`Not quite. ${quiz.explanation}`);
+  }
+}
+
+function applyThemeObjective(ownerKey, card) {
+  if (!card.themes || !card.themes.includes(state.matchTheme.key)) return;
+  const owner = state[ownerKey];
+  owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + 1);
+  addKnowledge(ownerKey, 1, `matched theme ${state.matchTheme.label}`);
+  spawnFloatingFx("Theme +1 Insp", panelForOwner(ownerKey), "info");
+}
+
+function applyAuthorCharacterRules(ownerKey, card) {
+  const owner = state[ownerKey];
+  const profile = AUTHOR_PROFILES[owner.activeAuthor];
+  if (card.author === owner.activeAuthor) {
+    addKnowledge(ownerKey, 1, `matched active author ${owner.activeAuthor}`);
+    spawnFloatingFx("Author Match", cardElementByUid(card.uid) || panelForOwner(ownerKey), "heal");
+    if (card.themes.includes(profile.bonusTag)) {
+      if (owner.activeAuthor === "Shakespeare") {
+        card.attack += 1;
+        spawnFloatingFx("+1 ATK", panelForOwner(ownerKey), "heal");
+      } else if (owner.activeAuthor === "Lewis Carroll") {
+        card.currentMemorability += 1;
+        spawnFloatingFx("+1 MEM", panelForOwner(ownerKey), "heal");
+      }
+      logEvent(`${card.name} gains ${owner.activeAuthor} passive bonus.`);
+    }
+  } else if (card.author === "Shakespeare" || card.author === "Lewis Carroll") {
+    card.currentMemorability = Math.max(1, card.currentMemorability - 1);
+    logEvent(`${card.name} is off-author and enters with -1 MEM.`);
+  }
+}
+
+async function playCard(ownerKey, handIndex) {
+  if (state.winner || state.pendingQuiz) return;
   const owner = state[ownerKey];
   const card = owner.hand[handIndex];
-  if (!card || card.cost > owner.inspiration) return;
+  if (!card) return;
+  const cardCost = getCardCost(owner, card);
+  if (cardCost > owner.inspiration) return;
 
-  owner.inspiration -= card.cost;
+  owner.inspiration -= cardCost;
   owner.hand.splice(handIndex, 1);
 
   if (card.type === "character") {
     owner.board.push(card);
     logEvent(`${owner.name} summons ${card.name}.`);
+    applyAuthorCharacterRules(ownerKey, card);
   } else {
     resolveEffect(ownerKey, card);
     owner.discard.push(card);
     logEvent(`${owner.name} plays ${card.name}.`);
+    if (card.subtype === "literary_device" && card.quiz) {
+      await resolveKnowledgeCheck(ownerKey, card.quiz, `Literary Device: ${card.name}`);
+    }
   }
 
+  applyThemeObjective(ownerKey, card);
   cleanupDefeated();
   checkWinner();
   render();
@@ -200,7 +348,6 @@ function playCard(ownerKey, handIndex) {
 function resolveEffect(ownerKey, card) {
   const owner = state[ownerKey];
   const enemy = ownerKey === "player" ? state.ai : state.player;
-
   switch (card.effect) {
     case "buff_friendly_top_attack": {
       const target = pickHighestAttack(owner.board);
@@ -222,7 +369,7 @@ function resolveEffect(ownerKey, card) {
         logEvent(`${card.name} hits ${target.name} for ${card.value}.`);
       } else {
         enemy.reputation -= 2;
-        const panel = ownerKey === "player" ? refs.aiPanel : refs.playerPanel;
+        const panel = panelForOwner(ownerKey === "player" ? "ai" : "player");
         flashTarget(panel);
         spawnFloatingFx("-2", panel);
         logEvent(`${card.name} hits enemy Writer for 2.`);
@@ -241,7 +388,7 @@ function resolveEffect(ownerKey, card) {
     }
     case "damage_enemy_writer": {
       enemy.reputation -= card.value;
-      const panel = ownerKey === "player" ? refs.aiPanel : refs.playerPanel;
+      const panel = panelForOwner(ownerKey === "player" ? "ai" : "player");
       flashTarget(panel);
       spawnFloatingFx(`-${card.value}`, panel);
       logEvent(`${enemy.name} loses ${card.value} Reputation.`);
@@ -254,31 +401,27 @@ function resolveEffect(ownerKey, card) {
         revived.currentMemorability = revived.memorability;
         revived.exhausted = false;
         owner.hand.push(revived);
-        const panel = ownerKey === "player" ? refs.playerPanel : refs.aiPanel;
-        spawnFloatingFx("Revive", panel, "heal");
+        spawnFloatingFx("Revive", panelForOwner(ownerKey), "heal");
         logEvent(`${owner.name} returns ${revived.name} to hand.`);
       }
       break;
     }
     case "draw_cards":
       drawCards(owner, card.value);
-      spawnFloatingFx(`+${card.value} card`, ownerKey === "player" ? refs.playerPanel : refs.aiPanel, "info");
+      spawnFloatingFx(`+${card.value} card`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} draws ${card.value} card(s).`);
       break;
-    case "heal_self": {
+    case "heal_self":
       owner.reputation += card.value;
-      const panel = ownerKey === "player" ? refs.playerPanel : refs.aiPanel;
-      flashTarget(panel);
-      spawnFloatingFx(`+${card.value}`, panel, "heal");
+      flashTarget(panelForOwner(ownerKey));
+      spawnFloatingFx(`+${card.value}`, panelForOwner(ownerKey), "heal");
       logEvent(`${owner.name} restores ${card.value} Reputation.`);
       break;
-    }
-    case "gain_inspiration": {
+    case "gain_inspiration":
       owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + card.value);
-      spawnFloatingFx(`+${card.value} Insp`, ownerKey === "player" ? refs.playerPanel : refs.aiPanel, "info");
+      spawnFloatingFx(`+${card.value} Insp`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} gains +${card.value} Inspiration.`);
       break;
-    }
     case "weaken_enemy_all":
       enemy.board.forEach((c) => {
         c.attack = Math.max(1, c.attack - card.value);
@@ -299,55 +442,45 @@ function pickLowestMem(cards) {
 }
 
 function attackUnit(attackerOwnerKey, attackerUid, defenderUid) {
-  if (state.winner) return;
+  if (state.winner || state.pendingQuiz) return;
   const attackerOwner = state[attackerOwnerKey];
   const defenderOwner = attackerOwnerKey === "player" ? state.ai : state.player;
-
   const attacker = attackerOwner.board.find((c) => c.uid === attackerUid);
   const defender = defenderOwner.board.find((c) => c.uid === defenderUid);
   if (!attacker || !defender || attacker.exhausted) return;
 
   const attackerDamage = Math.max(1, attacker.attack - defender.defense);
   const defenderDamage = Math.max(1, defender.attack - attacker.defense);
-
   const attackerEl = cardElementByUid(attacker.uid);
   const defenderEl = cardElementByUid(defender.uid);
   flashTarget(attackerEl);
   flashTarget(defenderEl);
   spawnFloatingFx(`-${attackerDamage}`, defenderEl);
   spawnFloatingFx(`-${defenderDamage}`, attackerEl);
-
   defender.currentMemorability -= attackerDamage;
   attacker.currentMemorability -= defenderDamage;
   attacker.exhausted = true;
   state.selectedAttackerUid = null;
-
   logEvent(`${attacker.name} attacks ${defender.name} (${attackerDamage}/${defenderDamage} exchanged).`);
-
   cleanupDefeated();
   checkWinner();
   render();
 }
 
 function attackWriter(attackerOwnerKey, attackerUid) {
-  if (state.winner) return;
+  if (state.winner || state.pendingQuiz) return;
   const attackerOwner = state[attackerOwnerKey];
   const defenderOwner = attackerOwnerKey === "player" ? state.ai : state.player;
   const attacker = attackerOwner.board.find((c) => c.uid === attackerUid);
-
-  if (!attacker || attacker.exhausted) return;
-  if (defenderOwner.board.length > 0) return;
+  if (!attacker || attacker.exhausted || defenderOwner.board.length > 0) return;
 
   defenderOwner.reputation -= attacker.attack;
   attacker.exhausted = true;
   state.selectedAttackerUid = null;
-
-  const targetPanel = attackerOwnerKey === "player" ? refs.aiPanel : refs.playerPanel;
+  const targetPanel = panelForOwner(attackerOwnerKey === "player" ? "ai" : "player");
   flashTarget(targetPanel);
   spawnFloatingFx(`-${attacker.attack}`, targetPanel);
-
   logEvent(`${attacker.name} attacks Writer directly for ${attacker.attack}.`);
-
   checkWinner();
   render();
 }
@@ -359,7 +492,7 @@ function playLeaveFx(cardUid, ownerKey) {
     flashTarget(cardEl);
     spawnFloatingFx("Defeated", cardEl, "info");
   } else {
-    spawnFloatingFx("Defeated", ownerKey === "player" ? refs.playerPanel : refs.aiPanel, "info");
+    spawnFloatingFx("Defeated", panelForOwner(ownerKey), "info");
   }
 }
 
@@ -381,9 +514,19 @@ function cleanupDefeated() {
 }
 
 function checkWinner() {
-  if (state.player.reputation <= 0 || state.ai.reputation <= 0) {
-    state.winner = state.player.reputation <= 0 ? "ai" : "player";
-    logEvent(`Match over: ${state.winner === "player" ? "You win!" : "AI wins."}`);
+  if (
+    state.player.reputation <= 0 ||
+    state.ai.reputation <= 0 ||
+    state.player.knowledge >= KNOWLEDGE_TO_WIN ||
+    state.ai.knowledge >= KNOWLEDGE_TO_WIN
+  ) {
+    if (state.player.reputation <= 0 || state.ai.knowledge >= KNOWLEDGE_TO_WIN) state.winner = "ai";
+    else state.winner = "player";
+    const reason =
+      state.player.knowledge >= KNOWLEDGE_TO_WIN || state.ai.knowledge >= KNOWLEDGE_TO_WIN
+        ? "knowledge track"
+        : "reputation";
+    logEvent(`Match over by ${reason}: ${state.winner === "player" ? "You win!" : "AI wins."}`);
     showWinnerBanner();
     return true;
   }
@@ -401,11 +544,15 @@ function render() {
   const { player, ai } = state;
   refs.playerRep.textContent = player.reputation;
   refs.playerInsp.textContent = `${player.inspiration}/${player.maxInspiration}`;
+  refs.playerKnowledge.textContent = `${player.knowledge}/${KNOWLEDGE_TO_WIN}`;
+  refs.playerAuthor.textContent = player.activeAuthor;
   refs.playerDeck.textContent = player.deck.length;
   refs.playerHand.textContent = player.hand.length;
 
   refs.aiRep.textContent = ai.reputation;
   refs.aiInsp.textContent = `${ai.inspiration}/${ai.maxInspiration}`;
+  refs.aiKnowledge.textContent = `${ai.knowledge}/${KNOWLEDGE_TO_WIN}`;
+  refs.aiAuthor.textContent = ai.activeAuthor;
   refs.aiDeck.textContent = ai.deck.length;
   refs.aiHand.textContent = ai.hand.length;
 
@@ -415,9 +562,11 @@ function render() {
     : state.currentPlayer === "player"
       ? "Your Main Phase"
       : "AI Thinking...";
+  refs.themeLabel.textContent = state.matchTheme.label;
 
-  refs.drawBtn.disabled = state.winner !== null || state.currentPlayer !== "player" || state.player.hasDrawnThisTurn;
-  refs.endTurnBtn.disabled = state.winner !== null || state.currentPlayer !== "player";
+  refs.drawBtn.disabled =
+    state.winner !== null || state.currentPlayer !== "player" || state.player.hasDrawnThisTurn || state.pendingQuiz;
+  refs.endTurnBtn.disabled = state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz;
 
   if (!state.winner) hideWinnerBanner();
 
@@ -429,15 +578,19 @@ function render() {
 function buildCardEl(card, options = {}) {
   const node = refs.cardTemplate.content.firstElementChild.cloneNode(true);
   node.dataset.cardUid = card.uid;
+  const costPreview =
+    state.currentPlayer === "player" && !state.winner
+      ? `Cost ${getCardCost(state.player, card)}`
+      : `Cost ${card.cost}`;
+
   node.querySelector(".title").textContent = card.name;
-  node.querySelector(".author").textContent = `${card.author} - Cost ${card.cost}`;
+  node.querySelector(".author").textContent = `${card.author} - ${costPreview}`;
+  node.querySelector(".body").textContent = `Who: ${card.who}\nWhy: ${card.why}\nEffect: ${card.effectText}`;
 
   if (card.type === "character") {
-    node.querySelector(".body").textContent = card.text;
     node.querySelector(".meta").textContent = `ATK ${card.attack} | DEF ${card.defense} | MEM ${card.currentMemorability}`;
   } else {
-    node.querySelector(".body").textContent = card.text;
-    node.querySelector(".meta").textContent = card.type.toUpperCase();
+    node.querySelector(".meta").textContent = `${card.type.toUpperCase()}${card.subtype === "literary_device" ? " - DEVICE" : ""}`;
   }
 
   if (options.disabled) node.disabled = true;
@@ -445,18 +598,23 @@ function buildCardEl(card, options = {}) {
   if (options.selectedAttacker) node.classList.add("selected-attacker");
   if (options.entering) node.classList.add("entering");
   if (card.type === "character" && card.exhausted) node.classList.add("exhausted");
-
   return node;
 }
 
 function renderPlayerHand() {
   refs.playerHandCards.innerHTML = "";
   state.player.hand.forEach((card, index) => {
-    const disabled = state.winner !== null || state.currentPlayer !== "player" || card.cost > state.player.inspiration;
+    const cost = getCardCost(state.player, card);
+    const disabled =
+      state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz || cost > state.player.inspiration;
+
     const cardEl = buildCardEl(card, { disabled });
     cardEl.addEventListener("click", () => {
+      if (disabled) return;
       cardEl.classList.add("leaving");
-      setTimeout(() => playCard("player", index), 120);
+      setTimeout(() => {
+        playCard("player", index);
+      }, 120);
     });
     refs.playerHandCards.appendChild(cardEl);
   });
@@ -470,9 +628,10 @@ function renderBoard(side) {
   board.forEach((card) => {
     const entering = !prevBoardUids[side].has(card.uid);
     const isSelected = state.selectedAttackerUid === card.uid;
-
-    const canPickAsAttacker = side === "player" && state.currentPlayer === "player" && !state.winner && !card.exhausted;
-    const canPickAsDefender = side === "ai" && state.currentPlayer === "player" && !state.winner && Boolean(state.selectedAttackerUid);
+    const canPickAsAttacker =
+      side === "player" && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && !card.exhausted;
+    const canPickAsDefender =
+      side === "ai" && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && Boolean(state.selectedAttackerUid);
 
     const cardEl = buildCardEl(card, {
       disabled: false,
@@ -494,13 +653,17 @@ function renderBoard(side) {
       });
     }
 
-    if (side === "player" && state.currentPlayer === "player" && state.selectedAttackerUid === card.uid && state.ai.board.length === 0) {
+    if (
+      side === "player" &&
+      state.currentPlayer === "player" &&
+      !state.pendingQuiz &&
+      state.selectedAttackerUid === card.uid &&
+      state.ai.board.length === 0
+    ) {
       const directBtn = document.createElement("button");
       directBtn.className = "button primary";
       directBtn.textContent = "Attack AI Writer";
-      directBtn.addEventListener("click", () => {
-        attackWriter("player", card.uid);
-      });
+      directBtn.addEventListener("click", () => attackWriter("player", card.uid));
       boardRef.appendChild(directBtn);
     }
 
@@ -511,7 +674,7 @@ function renderBoard(side) {
 }
 
 function drawForPlayer() {
-  if (state.currentPlayer !== "player" || state.player.hasDrawnThisTurn || state.winner) return;
+  if (state.currentPlayer !== "player" || state.player.hasDrawnThisTurn || state.winner || state.pendingQuiz) return;
   drawCards(state.player, 1);
   state.player.hasDrawnThisTurn = true;
   spawnFloatingFx("+1 card", refs.playerPanel, "info");
@@ -519,8 +682,19 @@ function drawForPlayer() {
   render();
 }
 
-function endPlayerTurn() {
-  if (state.currentPlayer !== "player" || state.winner) return;
+async function runTurnEndQuickCheck(ownerKey) {
+  const quiz = QUICK_CHECK_BANK[Math.floor(Math.random() * QUICK_CHECK_BANK.length)];
+  await resolveKnowledgeCheck(ownerKey, quiz, "Turn-End Quick Check");
+  checkWinner();
+  render();
+}
+
+async function endPlayerTurn() {
+  if (state.currentPlayer !== "player" || state.winner || state.pendingQuiz) return;
+  if (state.turn % QUICK_CHECK_EVERY_TURNS === 0) {
+    await runTurnEndQuickCheck("player");
+    if (state.winner) return;
+  }
   state.currentPlayer = "ai";
   render();
   runAiTurn();
@@ -546,12 +720,12 @@ async function runAiTurn() {
   while (played && !state.winner) {
     played = false;
     const affordable = state.ai.hand
-      .map((card, idx) => ({ card, idx }))
-      .filter(({ card }) => card.cost <= state.ai.inspiration)
-      .sort((a, b) => b.card.cost - a.card.cost);
+      .map((card, idx) => ({ card, idx, cost: getCardCost(state.ai, card) }))
+      .filter(({ cost }) => cost <= state.ai.inspiration)
+      .sort((a, b) => b.cost - a.cost);
 
     if (affordable.length > 0) {
-      playCard("ai", affordable[0].idx);
+      await playCard("ai", affordable[0].idx);
       played = true;
       await sleep(420);
     }
@@ -562,8 +736,7 @@ async function runAiTurn() {
     if (attacker.exhausted) continue;
 
     if (state.player.board.length > 0) {
-      const target = pickLowestMem(state.player.board);
-      attackUnit("ai", attacker.uid, target.uid);
+      attackUnit("ai", attacker.uid, pickLowestMem(state.player.board).uid);
     } else {
       attackWriter("ai", attacker.uid);
     }
@@ -571,6 +744,11 @@ async function runAiTurn() {
   }
 
   if (state.winner) return;
+
+  if (state.turn % QUICK_CHECK_EVERY_TURNS === 0) {
+    await runTurnEndQuickCheck("ai");
+    if (state.winner) return;
+  }
 
   state.turn += 1;
   beginTurn("player");

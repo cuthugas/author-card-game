@@ -116,6 +116,11 @@ p {
   font-weight: 700;
 }
 
+.turn-info p:last-child {
+  color: #e7c588;
+  font-size: 0.88rem;
+}
+
 .actions {
   display: flex;
   gap: 8px;
@@ -178,6 +183,7 @@ p {
 
 .card .body {
   font-size: 0.77rem;
+  white-space: pre-line;
 }
 
 .card .meta {
@@ -261,6 +267,50 @@ p {
 
 .winner-content h2 {
   font-size: 1.6rem;
+}
+
+.quiz-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 13, 25, 0.74);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 35;
+}
+
+.quiz-content {
+  width: min(92vw, 560px);
+  background: linear-gradient(180deg, #f7f0dd, #e7d6ad);
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  padding: 18px;
+  color: #231e13;
+  display: grid;
+  gap: 12px;
+}
+
+.quiz-options {
+  display: grid;
+  gap: 8px;
+}
+
+.quiz-option {
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: #f5f6fa;
+  color: #222a3a;
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.quiz-option.correct {
+  background: #caead8;
+}
+
+.quiz-option.incorrect {
+  background: #f4c7c7;
 }
 
 .hidden {

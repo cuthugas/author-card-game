@@ -23,6 +23,8 @@
           <div class="stats">
             <span>Reputation: <strong id="ai-rep">0</strong></span>
             <span>Inspiration: <strong id="ai-insp">0</strong></span>
+            <span>Knowledge: <strong id="ai-knowledge">0</strong></span>
+            <span>Author: <strong id="ai-author">-</strong></span>
             <span>Deck: <strong id="ai-deck">0</strong></span>
             <span>Hand: <strong id="ai-hand">0</strong></span>
           </div>
@@ -47,6 +49,8 @@
           <div class="stats">
             <span>Reputation: <strong id="player-rep">0</strong></span>
             <span>Inspiration: <strong id="player-insp">0</strong></span>
+            <span>Knowledge: <strong id="player-knowledge">0</strong></span>
+            <span>Author: <strong id="player-author">-</strong></span>
             <span>Deck: <strong id="player-deck">0</strong></span>
             <span>Hand: <strong id="player-hand">0</strong></span>
           </div>
@@ -57,6 +61,7 @@
         <div class="turn-info">
           <p id="turn-label">Turn</p>
           <p id="phase-label">Phase</p>
+          <p id="theme-label">Theme</p>
         </div>
         <div class="actions">
           <button id="draw-btn" class="button">Draw</button>
@@ -79,9 +84,10 @@
         <ul>
           <li>5-card opening hand, one manual draw per turn.</li>
           <li>+1 max Inspiration each turn (cap 5), refreshes at turn start.</li>
-          <li>Play any number of cards as long as Inspiration allows.</li>
+          <li>Play cards as long as Inspiration allows. Matching your active Author lowers character cost by 1.</li>
           <li>Characters can attack once per turn after they are played.</li>
-          <li>Win by reducing opposing Reputation to 0.</li>
+          <li>Literary Device cards and quick checks award Knowledge points on correct answers.</li>
+          <li>Win by reducing opposing Reputation to 0 or reaching 10 Knowledge.</li>
         </ul>
       </section>
     </main>
@@ -94,6 +100,14 @@
     </div>
 
     <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
+
+    <div id="quiz-modal" class="quiz-modal hidden" role="dialog" aria-modal="true">
+      <div class="quiz-content">
+        <h2 id="quiz-title">Quick Check</h2>
+        <p id="quiz-question"></p>
+        <div id="quiz-options" class="quiz-options"></div>
+      </div>
+    </div>
 
     <template id="card-template">
       <button class="card" type="button">
