@@ -1,8 +1,8 @@
 ﻿const MAX_INSPIRATION = 5;
 const STARTING_REPUTATION = 15;
 const STARTING_HAND = 5;
-const KNOWLEDGE_TO_WIN = 10;
-const QUICK_CHECK_EVERY_TURNS = 3;
+const DEFAULT_KNOWLEDGE_TO_WIN = 10;
+const DEFAULT_QUICK_CHECK_EVERY_TURNS = 3;
 
 const AUTHOR_PROFILES = {
   Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
@@ -64,6 +64,9 @@ const refs = {
   themeLabel: document.getElementById("theme-label"),
   drawBtn: document.getElementById("draw-btn"),
   endTurnBtn: document.getElementById("end-turn-btn"),
+  teacherKnowledgeTarget: document.getElementById("teacher-knowledge-target"),
+  teacherQuizFrequency: document.getElementById("teacher-quiz-frequency"),
+  teacherApplyBtn: document.getElementById("teacher-apply-btn"),
   log: document.getElementById("log"),
   newGameBtn: document.getElementById("new-game-btn"),
   playAgainBtn: document.getElementById("play-again-btn"),
@@ -84,7 +87,7 @@ const cardPool = [
   { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "High-risk attacker." },
   { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Embodies persuasion, guilt, and ambition.", effectText: "Solid control body." },
   { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "Durable late-game character." },
-  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "Sticky battlefield presence." },
+  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "High memorability (4) makes her harder to defeat early." },
   { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "Hard to remove efficiently." },
   { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Parodies arbitrary authority.", effectText: "Pressure card." },
   { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "Big finisher." },
@@ -103,6 +106,10 @@ const cardPool = [
 let uid = 1;
 let state;
 let prevBoardUids = { player: new Set(), ai: new Set() };
+let teacherSettings = {
+  knowledgeToWin: DEFAULT_KNOWLEDGE_TO_WIN,
+  quickCheckEveryTurns: DEFAULT_QUICK_CHECK_EVERY_TURNS,
+};
 
 function newPlayer(name, activeAuthor) {
   return { name, reputation: STARTING_REPUTATION, maxInspiration: 0, inspiration: 0, knowledge: 0, activeAuthor, deck: createDeck(), hand: [], board: [], discard: [], hasDrawnThisTurn: false };
@@ -167,8 +174,36 @@ function hideQuizModal() {
   refs.quizOptions.innerHTML = "";
 }
 
+function syncTeacherControlsFromState() {
+  if (!state) return;
+  refs.teacherKnowledgeTarget.value = state.settings.knowledgeToWin;
+  refs.teacherQuizFrequency.value = state.settings.quickCheckEveryTurns;
+}
+
+function applyTeacherSettings() {
+  const knowledgeToWin = Math.max(3, Math.min(20, Number.parseInt(refs.teacherKnowledgeTarget.value, 10) || DEFAULT_KNOWLEDGE_TO_WIN));
+  const quickCheckEveryTurns = Math.max(2, Math.min(6, Number.parseInt(refs.teacherQuizFrequency.value, 10) || DEFAULT_QUICK_CHECK_EVERY_TURNS));
+  teacherSettings = { knowledgeToWin, quickCheckEveryTurns };
+  if (state) {
+    state.settings = { ...teacherSettings };
+    syncTeacherControlsFromState();
+    logEvent(`Teacher Mode updated: Knowledge win ${knowledgeToWin}, quick check every ${quickCheckEveryTurns} turns.`);
+    render();
+  }
+}
+
 function initGame() {
-  state = { turn: 1, currentPlayer: "player", winner: null, selectedAttackerUid: null, pendingQuiz: false, matchTheme: randomTheme(), player: newPlayer("You", "Shakespeare"), ai: newPlayer("AI", "Lewis Carroll") };
+  state = {
+    turn: 1,
+    currentPlayer: "player",
+    winner: null,
+    selectedAttackerUid: null,
+    pendingQuiz: false,
+    settings: { ...teacherSettings },
+    matchTheme: randomTheme(),
+    player: newPlayer("You", "Shakespeare"),
+    ai: newPlayer("AI", "Lewis Carroll"),
+  };
   prevBoardUids = { player: new Set(), ai: new Set() };
   refs.log.innerHTML = "";
   hideWinnerBanner();
@@ -180,6 +215,7 @@ function initGame() {
   logEvent(`Theme objective: ${state.matchTheme.label}. ${state.matchTheme.description}`);
   logEvent(`Your Active Author: ${state.player.activeAuthor} (${AUTHOR_PROFILES[state.player.activeAuthor].passive})`);
   logEvent(`AI Active Author: ${state.ai.activeAuthor} (${AUTHOR_PROFILES[state.ai.activeAuthor].passive})`);
+  syncTeacherControlsFromState();
   render();
 }
 
@@ -514,16 +550,17 @@ function cleanupDefeated() {
 }
 
 function checkWinner() {
+  const knowledgeToWin = state.settings.knowledgeToWin;
   if (
     state.player.reputation <= 0 ||
     state.ai.reputation <= 0 ||
-    state.player.knowledge >= KNOWLEDGE_TO_WIN ||
-    state.ai.knowledge >= KNOWLEDGE_TO_WIN
+    state.player.knowledge >= knowledgeToWin ||
+    state.ai.knowledge >= knowledgeToWin
   ) {
-    if (state.player.reputation <= 0 || state.ai.knowledge >= KNOWLEDGE_TO_WIN) state.winner = "ai";
+    if (state.player.reputation <= 0 || state.ai.knowledge >= knowledgeToWin) state.winner = "ai";
     else state.winner = "player";
     const reason =
-      state.player.knowledge >= KNOWLEDGE_TO_WIN || state.ai.knowledge >= KNOWLEDGE_TO_WIN
+      state.player.knowledge >= knowledgeToWin || state.ai.knowledge >= knowledgeToWin
         ? "knowledge track"
         : "reputation";
     logEvent(`Match over by ${reason}: ${state.winner === "player" ? "You win!" : "AI wins."}`);
@@ -542,16 +579,17 @@ function logEvent(text) {
 
 function render() {
   const { player, ai } = state;
+  const knowledgeToWin = state.settings.knowledgeToWin;
   refs.playerRep.textContent = player.reputation;
   refs.playerInsp.textContent = `${player.inspiration}/${player.maxInspiration}`;
-  refs.playerKnowledge.textContent = `${player.knowledge}/${KNOWLEDGE_TO_WIN}`;
+  refs.playerKnowledge.textContent = `${player.knowledge}/${knowledgeToWin}`;
   refs.playerAuthor.textContent = player.activeAuthor;
   refs.playerDeck.textContent = player.deck.length;
   refs.playerHand.textContent = player.hand.length;
 
   refs.aiRep.textContent = ai.reputation;
   refs.aiInsp.textContent = `${ai.inspiration}/${ai.maxInspiration}`;
-  refs.aiKnowledge.textContent = `${ai.knowledge}/${KNOWLEDGE_TO_WIN}`;
+  refs.aiKnowledge.textContent = `${ai.knowledge}/${knowledgeToWin}`;
   refs.aiAuthor.textContent = ai.activeAuthor;
   refs.aiDeck.textContent = ai.deck.length;
   refs.aiHand.textContent = ai.hand.length;
@@ -585,7 +623,7 @@ function buildCardEl(card, options = {}) {
 
   node.querySelector(".title").textContent = card.name;
   node.querySelector(".author").textContent = `${card.author} - ${costPreview}`;
-  node.querySelector(".body").textContent = `Who: ${card.who}\nWhy: ${card.why}\nEffect: ${card.effectText}`;
+  node.querySelector(".body").textContent = `Source: ${card.who}\nFunction: ${card.why}\nEffect: ${card.effectText}`;
 
   if (card.type === "character") {
     node.querySelector(".meta").textContent = `ATK ${card.attack} | DEF ${card.defense} | MEM ${card.currentMemorability}`;
@@ -691,7 +729,7 @@ async function runTurnEndQuickCheck(ownerKey) {
 
 async function endPlayerTurn() {
   if (state.currentPlayer !== "player" || state.winner || state.pendingQuiz) return;
-  if (state.turn % QUICK_CHECK_EVERY_TURNS === 0) {
+  if (state.turn % state.settings.quickCheckEveryTurns === 0) {
     await runTurnEndQuickCheck("player");
     if (state.winner) return;
   }
@@ -745,7 +783,7 @@ async function runAiTurn() {
 
   if (state.winner) return;
 
-  if (state.turn % QUICK_CHECK_EVERY_TURNS === 0) {
+  if (state.turn % state.settings.quickCheckEveryTurns === 0) {
     await runTurnEndQuickCheck("ai");
     if (state.winner) return;
   }
@@ -757,6 +795,7 @@ async function runAiTurn() {
 
 refs.drawBtn.addEventListener("click", drawForPlayer);
 refs.endTurnBtn.addEventListener("click", endPlayerTurn);
+refs.teacherApplyBtn.addEventListener("click", applyTeacherSettings);
 refs.newGameBtn.addEventListener("click", initGame);
 refs.playAgainBtn.addEventListener("click", initGame);
 
