@@ -1,0 +1,9 @@
+﻿{
+  "name": "Author Card Game Prototype",
+  "short_name": "AuthorCard",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101728",
+  "theme_color": "#1f2a44",
+  "description": "Classroom Mode browser prototype for school iPads."
+}

@@ -1,0 +1,7 @@
+# Local toolchains and archives
+tools/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.tmp
