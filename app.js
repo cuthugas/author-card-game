@@ -64,9 +64,15 @@ const refs = {
   themeLabel: document.getElementById("theme-label"),
   drawBtn: document.getElementById("draw-btn"),
   endTurnBtn: document.getElementById("end-turn-btn"),
+  toggleLogBtn: document.getElementById("toggle-log-btn"),
+  toggleTeacherBtn: document.getElementById("toggle-teacher-btn"),
+  toggleRulesBtn: document.getElementById("toggle-rules-btn"),
   teacherKnowledgeTarget: document.getElementById("teacher-knowledge-target"),
   teacherQuizFrequency: document.getElementById("teacher-quiz-frequency"),
   teacherApplyBtn: document.getElementById("teacher-apply-btn"),
+  logPanel: document.getElementById("log-panel"),
+  teacherPanel: document.getElementById("teacher-panel"),
+  rulesPanel: document.getElementById("rules-panel"),
   log: document.getElementById("log"),
   newGameBtn: document.getElementById("new-game-btn"),
   playAgainBtn: document.getElementById("play-again-btn"),
@@ -83,14 +89,14 @@ const refs = {
 };
 
 const cardPool = [
-  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", cost: 2, attack: 3, defense: 2, memorability: 3, themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Represents indecision, revenge, and moral conflict.", effectText: "Balanced duelist." },
-  { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "High-risk attacker." },
-  { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Embodies persuasion, guilt, and ambition.", effectText: "Solid control body." },
-  { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "Durable late-game character." },
-  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "High memorability (4) makes her harder to defeat early." },
-  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "Hard to remove efficiently." },
-  { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Parodies arbitrary authority.", effectText: "Pressure card." },
-  { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "Big finisher." },
+  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", cost: 2, attack: 3, defense: 2, memorability: 3, themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Represents indecision, revenge, and moral conflict.", effectText: "None." },
+  { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "None." },
+  { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Embodies persuasion, guilt, and ambition.", effectText: "None." },
+  { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "None." },
+  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "None." },
+  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "None." },
+  { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Parodies arbitrary authority.", effectText: "None." },
+  { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "None." },
   { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", subtype: "literary_device", author: "Literary Device", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, themes: ["power", "identity"], who: "A poetic meter of five unstressed/stressed pairs per line.", why: "Key rhythm used in Shakespeare's dramatic verse.", effectText: "Best ally gains +2 ATK and +1 MEM.", quiz: { question: "What is iambic pentameter?", options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"], correctIndex: 0, explanation: "Iambic pentameter is a 10-syllable line with five iambs." } },
   { key: "soliloquy", name: "Soliloquy", type: "plot", subtype: "literary_device", author: "Literary Device", cost: 2, effect: "damage_enemy_top_attack", value: 3, themes: ["identity", "ambition"], who: "A speech where a character reveals inner thoughts aloud.", why: "Used in drama to expose motivation and conflict.", effectText: "Deal 3 damage to strongest enemy.", quiz: { question: "What does a soliloquy reveal?", options: ["A character's inner thoughts", "A chorus response", "A stage direction"], correctIndex: 0, explanation: "A soliloquy reveals what a character is thinking privately." } },
   { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Wonderland", cost: 3, effect: "destroy_enemy_lowest_mem", themes: ["curiosity", "power"], who: "Reference to the Vorpal Sword in Jabberwocky.", why: "Connects nonsense verse and heroic quest language.", effectText: "Destroy weakest enemy character." },
@@ -192,6 +198,18 @@ function applyTeacherSettings() {
   }
 }
 
+function closeAllDrawers() {
+  refs.logPanel.classList.add("hidden");
+  refs.teacherPanel.classList.add("hidden");
+  refs.rulesPanel.classList.add("hidden");
+}
+
+function toggleDrawer(drawerEl) {
+  const willOpen = drawerEl.classList.contains("hidden");
+  closeAllDrawers();
+  if (willOpen) drawerEl.classList.remove("hidden");
+}
+
 function initGame() {
   state = {
     turn: 1,
@@ -208,6 +226,7 @@ function initGame() {
   refs.log.innerHTML = "";
   hideWinnerBanner();
   hideQuizModal();
+  closeAllDrawers();
   drawCards(state.player, STARTING_HAND);
   drawCards(state.ai, STARTING_HAND);
   beginTurn("player");
@@ -795,6 +814,9 @@ async function runAiTurn() {
 
 refs.drawBtn.addEventListener("click", drawForPlayer);
 refs.endTurnBtn.addEventListener("click", endPlayerTurn);
+refs.toggleLogBtn.addEventListener("click", () => toggleDrawer(refs.logPanel));
+refs.toggleTeacherBtn.addEventListener("click", () => toggleDrawer(refs.teacherPanel));
+refs.toggleRulesBtn.addEventListener("click", () => toggleDrawer(refs.rulesPanel));
 refs.teacherApplyBtn.addEventListener("click", applyTeacherSettings);
 refs.newGameBtn.addEventListener("click", initGame);
 refs.playAgainBtn.addEventListener("click", initGame);

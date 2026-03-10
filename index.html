@@ -14,19 +14,24 @@
     <main class="app">
       <header class="topbar">
         <h1>Author Card Game</h1>
-        <button id="new-game-btn" class="button secondary">New Game</button>
+        <div class="topbar-actions">
+          <button id="toggle-log-btn" class="button icon-button secondary" title="Match Log">📜 Log</button>
+          <button id="toggle-teacher-btn" class="button icon-button secondary" title="Teacher Mode">🎓 Teacher</button>
+          <button id="toggle-rules-btn" class="button icon-button secondary" title="Rules">📘 Rules</button>
+          <button id="new-game-btn" class="button icon-button secondary">🔄 New</button>
+        </div>
       </header>
 
       <section class="arena">
         <article id="ai-panel" class="panel enemy">
           <h2>AI Writer</h2>
           <div class="stats">
-            <span>Reputation: <strong id="ai-rep">0</strong></span>
-            <span>Inspiration: <strong id="ai-insp">0</strong></span>
-            <span>Knowledge: <strong id="ai-knowledge">0</strong></span>
-            <span>Author: <strong id="ai-author">-</strong></span>
-            <span>Deck: <strong id="ai-deck">0</strong></span>
-            <span>Hand: <strong id="ai-hand">0</strong></span>
+            <span class="stat-pill" title="Reputation">❤ <strong id="ai-rep">0</strong></span>
+            <span class="stat-pill" title="Inspiration">✦ <strong id="ai-insp">0</strong></span>
+            <span class="stat-pill" title="Knowledge">🧠 <strong id="ai-knowledge">0</strong></span>
+            <span class="stat-pill" title="Author">✍ <strong id="ai-author">-</strong></span>
+            <span class="stat-pill" title="Deck">🗂 <strong id="ai-deck">0</strong></span>
+            <span class="stat-pill" title="Hand">🃏 <strong id="ai-hand">0</strong></span>
           </div>
         </article>
 
@@ -47,12 +52,12 @@
         <article id="player-panel" class="panel player">
           <h2>Your Writer</h2>
           <div class="stats">
-            <span>Reputation: <strong id="player-rep">0</strong></span>
-            <span>Inspiration: <strong id="player-insp">0</strong></span>
-            <span>Knowledge: <strong id="player-knowledge">0</strong></span>
-            <span>Author: <strong id="player-author">-</strong></span>
-            <span>Deck: <strong id="player-deck">0</strong></span>
-            <span>Hand: <strong id="player-hand">0</strong></span>
+            <span class="stat-pill" title="Reputation">❤ <strong id="player-rep">0</strong></span>
+            <span class="stat-pill" title="Inspiration">✦ <strong id="player-insp">0</strong></span>
+            <span class="stat-pill" title="Knowledge">🧠 <strong id="player-knowledge">0</strong></span>
+            <span class="stat-pill" title="Author">✍ <strong id="player-author">-</strong></span>
+            <span class="stat-pill" title="Deck">🗂 <strong id="player-deck">0</strong></span>
+            <span class="stat-pill" title="Hand">🃏 <strong id="player-hand">0</strong></span>
           </div>
         </article>
       </section>
@@ -64,48 +69,48 @@
           <p id="theme-label">Theme</p>
         </div>
         <div class="actions">
-          <button id="draw-btn" class="button">Draw</button>
-          <button id="end-turn-btn" class="button primary">End Turn</button>
-        </div>
-      </section>
-
-      <section class="teacher-panel">
-        <h3>Teacher Mode</h3>
-        <div class="teacher-controls">
-          <label>
-            Knowledge To Win
-            <input id="teacher-knowledge-target" type="number" min="3" max="20" step="1" />
-          </label>
-          <label>
-            Quick Check Every (Turns)
-            <input id="teacher-quiz-frequency" type="number" min="2" max="6" step="1" />
-          </label>
-          <button id="teacher-apply-btn" class="button secondary">Apply</button>
+          <button id="draw-btn" class="button icon-button">📥 Draw</button>
+          <button id="end-turn-btn" class="button icon-button primary">⏭ End Turn</button>
         </div>
       </section>
 
       <section class="hand-panel">
-        <h3>Your Hand (Tap a card to play)</h3>
+        <h3>Hand (Tap to play)</h3>
         <div id="player-hand-cards" class="hand"></div>
       </section>
-
-      <section class="log-panel">
-        <h3>Match Log</h3>
-        <div id="log" class="log" aria-live="polite"></div>
-      </section>
-
-      <section class="rules-panel">
-        <h3>Classroom Mode Rules (Prototype)</h3>
-        <ul>
-          <li>5-card opening hand, one manual draw per turn.</li>
-          <li>+1 max Inspiration each turn (cap 5), refreshes at turn start.</li>
-          <li>Play cards as long as Inspiration allows. Matching your active Author lowers character cost by 1.</li>
-          <li>Characters can attack once per turn after they are played.</li>
-          <li>Literary Device cards and quick checks award Knowledge points on correct answers.</li>
-          <li>Win by reducing opposing Reputation to 0 or reaching the Teacher Mode Knowledge target.</li>
-        </ul>
-      </section>
     </main>
+
+    <section id="log-panel" class="drawer log-panel hidden">
+      <h3>Match Log</h3>
+      <div id="log" class="log" aria-live="polite"></div>
+    </section>
+
+    <section id="teacher-panel" class="drawer teacher-panel hidden">
+      <h3>Teacher Mode</h3>
+      <div class="teacher-controls">
+        <label>
+          Knowledge To Win
+          <input id="teacher-knowledge-target" type="number" min="3" max="20" step="1" />
+        </label>
+        <label>
+          Quick Check Every (Turns)
+          <input id="teacher-quiz-frequency" type="number" min="2" max="6" step="1" />
+        </label>
+        <button id="teacher-apply-btn" class="button secondary">Apply</button>
+      </div>
+    </section>
+
+    <section id="rules-panel" class="drawer rules-panel hidden">
+      <h3>Classroom Mode Rules (Prototype)</h3>
+      <ul>
+        <li>5-card opening hand, one manual draw per turn.</li>
+        <li>+1 max Inspiration each turn (cap 5), refreshes at turn start.</li>
+        <li>Play cards as long as Inspiration allows. Matching your active Author lowers character cost by 1.</li>
+        <li>Characters can attack once per turn after they are played.</li>
+        <li>Literary Device cards and quick checks award Knowledge points on correct answers.</li>
+        <li>Win by reducing opposing Reputation to 0 or reaching the Teacher Mode Knowledge target.</li>
+      </ul>
+    </section>
 
     <div id="winner-banner" class="winner-banner hidden" role="alertdialog" aria-modal="true">
       <div class="winner-content">

@@ -31,16 +31,22 @@ body {
   max-width: 1100px;
   height: 100dvh;
   margin: 0 auto;
-  padding: 10px;
+  padding: 8px;
   display: grid;
-  gap: 8px;
-  overflow: auto;
+  gap: 6px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 5px;
 }
 
 h1,
@@ -71,10 +77,7 @@ p {
 }
 
 .arena,
-.teacher-panel,
 .hand-panel,
-.log-panel,
-.rules-panel,
 .controls {
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -85,6 +88,8 @@ p {
 .arena {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  align-content: start;
 }
 
 .lane h3 {
@@ -168,6 +173,13 @@ p {
   color: #1e2433;
 }
 
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
 .button.primary {
   background: var(--accent);
   color: #2d200e;
@@ -184,9 +196,78 @@ p {
 }
 
 .hand {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  display: flex;
   gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.hand .card {
+  flex: 0 0 132px;
+}
+
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.drawer {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  width: min(94vw, 460px);
+  max-height: min(52dvh, 380px);
+  z-index: 28;
+  background: linear-gradient(180deg, #f8f4e7, #e7dcc2);
+  color: #201b14;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  padding: 8px;
+  overflow: auto;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+.drawer h3 {
+  margin-bottom: 8px;
+}
+
+.log-panel {
+  background: linear-gradient(180deg, #eef3ff, #d7e4ff);
+}
+
+.rules-panel {
+  background: linear-gradient(180deg, #fff4df, #ebd5a9);
+}
+
+.teacher-panel {
+  background: linear-gradient(180deg, #f0ffe8, #d3ebc6);
+}
+
+.drawer + .drawer {
+  bottom: 60px;
+}
+
+.drawer + .drawer + .drawer {
+  bottom: 112px;
+}
+
+.log {
+  background: rgba(8, 17, 34, 0.8);
+  color: #f5f7ff;
+}
+
+.rules-panel ul {
+  color: #2a2114;
+}
+
 }
 
 .card {
@@ -426,6 +507,17 @@ p {
 }
 
 @media (max-width: 760px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
   .teacher-controls {
     grid-template-columns: 1fr;
   }
