@@ -122,6 +122,10 @@ const sfxState = {
   muted: localStorage.getItem("acg_sfx_muted") === "1",
   unlocked: false,
   context: null,
+  masterGain: null,
+  compressor: null,
+  reverb: null,
+  reverbGain: null,
 };
 
 function newPlayer(name, activeAuthor) {
@@ -166,6 +170,47 @@ function ensureAudioContext() {
   return sfxState.context;
 }
 
+function createImpulseResponse(ctx, seconds = 1.4, decay = 2.2) {
+  const length = Math.floor(ctx.sampleRate * seconds);
+  const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+  for (let c = 0; c < impulse.numberOfChannels; c += 1) {
+    const channel = impulse.getChannelData(c);
+    for (let i = 0; i < length; i += 1) {
+      const n = Math.random() * 2 - 1;
+      const t = i / length;
+      channel[i] = n * Math.pow(1 - t, decay);
+    }
+  }
+  return impulse;
+}
+
+function ensureAudioGraph() {
+  const ctx = ensureAudioContext();
+  if (!ctx) return null;
+  if (sfxState.masterGain) return ctx;
+
+  sfxState.masterGain = ctx.createGain();
+  sfxState.masterGain.gain.value = 0.78;
+
+  sfxState.compressor = ctx.createDynamicsCompressor();
+  sfxState.compressor.threshold.value = -20;
+  sfxState.compressor.knee.value = 20;
+  sfxState.compressor.ratio.value = 3;
+  sfxState.compressor.attack.value = 0.003;
+  sfxState.compressor.release.value = 0.22;
+
+  sfxState.reverb = ctx.createConvolver();
+  sfxState.reverb.buffer = createImpulseResponse(ctx, 1.6, 2.4);
+
+  sfxState.reverbGain = ctx.createGain();
+  sfxState.reverbGain.gain.value = 0.22;
+
+  sfxState.masterGain.connect(sfxState.compressor).connect(ctx.destination);
+  sfxState.masterGain.connect(sfxState.reverb);
+  sfxState.reverb.connect(sfxState.reverbGain).connect(sfxState.compressor);
+  return ctx;
+}
+
 function updateAudioToggleUi() {
   refs.audioToggleBtn.textContent = sfxState.muted ? "SFX Off" : "SFX On";
   refs.audioToggleBtn.classList.toggle("audio-off", sfxState.muted);
@@ -173,7 +218,7 @@ function updateAudioToggleUi() {
 
 async function unlockAudio() {
   if (sfxState.unlocked) return;
-  const ctx = ensureAudioContext();
+  const ctx = ensureAudioGraph();
   if (!ctx) return;
   if (ctx.state === "suspended") {
     try {
@@ -185,58 +230,110 @@ async function unlockAudio() {
   sfxState.unlocked = true;
 }
 
-function playTone(freq, duration = 0.08, type = "sine", gainValue = 0.035, whenOffset = 0) {
+function playTone(freq, duration = 0.08, type = "sine", gainValue = 0.035, whenOffset = 0, opts = {}) {
   if (sfxState.muted || !sfxState.unlocked) return;
-  const ctx = ensureAudioContext();
+  const ctx = ensureAudioGraph();
   if (!ctx) return;
   const now = ctx.currentTime + whenOffset;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  const panNode = ctx.createStereoPanner();
+
+  const attack = opts.attack ?? 0.008;
+  const release = opts.release ?? duration;
+  const detune = opts.detune ?? 0;
+  const pan = opts.pan ?? 0;
+  const cutoff = opts.cutoff ?? 2200;
+  const q = opts.q ?? 0.8;
+  const filterType = opts.filterType ?? "lowpass";
+
   osc.type = type;
   osc.frequency.setValueAtTime(freq, now);
+  osc.detune.setValueAtTime(detune, now);
+  filter.type = filterType;
+  filter.frequency.setValueAtTime(cutoff, now);
+  filter.Q.setValueAtTime(q, now);
+  panNode.pan.setValueAtTime(pan, now);
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  osc.connect(gain).connect(ctx.destination);
+  gain.gain.exponentialRampToValueAtTime(gainValue, now + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + release);
+  osc.connect(filter).connect(panNode).connect(gain).connect(sfxState.masterGain);
   osc.start(now);
-  osc.stop(now + duration + 0.01);
+  osc.stop(now + release + 0.01);
+}
+
+function playNoiseBurst(duration = 0.06, gainValue = 0.02, whenOffset = 0, opts = {}) {
+  if (sfxState.muted || !sfxState.unlocked) return;
+  const ctx = ensureAudioGraph();
+  if (!ctx) return;
+  const now = ctx.currentTime + whenOffset;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  }
+
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = opts.filterType ?? "bandpass";
+  filter.frequency.setValueAtTime(opts.cutoff ?? 1800, now);
+  filter.Q.setValueAtTime(opts.q ?? 1.2, now);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  src.connect(filter).connect(gain).connect(sfxState.masterGain);
+  src.start(now);
+  src.stop(now + duration + 0.01);
 }
 
 function playSfxByName(name) {
   switch (name) {
     case "match_start":
-      playTone(392, 0.1, "triangle", 0.045, 0);
-      playTone(523.25, 0.12, "triangle", 0.045, 0.11);
+      playTone(392, 0.14, "triangle", 0.04, 0, { pan: -0.12, cutoff: 2800 });
+      playTone(493.88, 0.16, "triangle", 0.038, 0.12, { pan: 0.12, cutoff: 3000 });
+      playTone(587.33, 0.2, "triangle", 0.04, 0.24, { pan: 0, cutoff: 3200 });
       break;
     case "turn_start":
-      playTone(523.25, 0.06, "sine", 0.03, 0);
+      playTone(523.25, 0.07, "sine", 0.026, 0, { cutoff: 2400, q: 1.1 });
+      playTone(784, 0.05, "sine", 0.016, 0.045, { cutoff: 3000 });
       break;
     case "draw_card":
-      playTone(659.25, 0.055, "triangle", 0.03, 0);
-      playTone(783.99, 0.06, "triangle", 0.03, 0.055);
+      playNoiseBurst(0.035, 0.009, 0, { cutoff: 2200, q: 1.7 });
+      playTone(659.25, 0.08, "triangle", 0.025, 0, { pan: -0.08, cutoff: 3400 });
+      playTone(880, 0.1, "triangle", 0.022, 0.055, { pan: 0.08, cutoff: 3500 });
       break;
     case "card_play_character":
-      playTone(220, 0.08, "square", 0.03, 0);
-      playTone(277.18, 0.08, "square", 0.03, 0.08);
+      playNoiseBurst(0.03, 0.006, 0, { cutoff: 1400, q: 0.9 });
+      playTone(196, 0.1, "sawtooth", 0.026, 0, { cutoff: 1700, q: 1.3 });
+      playTone(246.94, 0.12, "triangle", 0.022, 0.08, { cutoff: 2100 });
       break;
     case "card_play_spell":
-      playTone(740, 0.09, "sawtooth", 0.028, 0);
-      playTone(932, 0.08, "sine", 0.024, 0.09);
+      playNoiseBurst(0.05, 0.01, 0, { cutoff: 3000, q: 2.2 });
+      playTone(740, 0.1, "sawtooth", 0.022, 0, { pan: -0.15, cutoff: 2600, q: 1.6 });
+      playTone(987.77, 0.12, "sine", 0.02, 0.09, { pan: 0.15, cutoff: 3200 });
       break;
     case "attack_unit":
-      playTone(130.81, 0.07, "square", 0.04, 0);
+      playNoiseBurst(0.04, 0.012, 0, { cutoff: 900, q: 0.8 });
+      playTone(130.81, 0.08, "square", 0.036, 0, { cutoff: 1200, q: 0.9 });
       break;
     case "attack_writer":
-      playTone(110, 0.095, "square", 0.05, 0);
+      playNoiseBurst(0.05, 0.014, 0, { cutoff: 700, q: 0.7 });
+      playTone(110, 0.1, "square", 0.042, 0, { cutoff: 1000, q: 0.8 });
+      playTone(82.41, 0.09, "triangle", 0.026, 0.05, { cutoff: 900 });
       break;
     case "card_defeated":
-      playTone(196, 0.06, "triangle", 0.03, 0);
-      playTone(146.83, 0.08, "triangle", 0.03, 0.06);
+      playNoiseBurst(0.04, 0.01, 0, { cutoff: 1100, q: 1 });
+      playTone(220, 0.07, "triangle", 0.024, 0, { cutoff: 1600 });
+      playTone(155.56, 0.11, "triangle", 0.022, 0.05, { cutoff: 1300 });
       break;
     case "match_end":
-      playTone(523.25, 0.1, "triangle", 0.045, 0);
-      playTone(659.25, 0.1, "triangle", 0.045, 0.11);
-      playTone(783.99, 0.14, "triangle", 0.05, 0.22);
+      playTone(523.25, 0.16, "triangle", 0.042, 0, { pan: -0.1, cutoff: 3000 });
+      playTone(659.25, 0.18, "triangle", 0.042, 0.12, { pan: 0.08, cutoff: 3200 });
+      playTone(783.99, 0.22, "triangle", 0.046, 0.24, { pan: 0, cutoff: 3400 });
+      playTone(1046.5, 0.2, "sine", 0.02, 0.3, { cutoff: 3600 });
       break;
     default:
       break;
@@ -253,7 +350,10 @@ function toggleSfx() {
   localStorage.setItem("acg_sfx_muted", sfxState.muted ? "1" : "0");
   updateAudioToggleUi();
   if (!sfxState.muted) {
-    unlockAudio().then(() => playTone(659.25, 0.05, "sine", 0.03, 0));
+    unlockAudio().then(() => {
+      playTone(659.25, 0.06, "sine", 0.022, 0, { cutoff: 3000 });
+      playTone(880, 0.06, "sine", 0.02, 0.05, { cutoff: 3400 });
+    });
   }
 }
 
