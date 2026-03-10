@@ -3,6 +3,7 @@ const STARTING_REPUTATION = 15;
 const STARTING_HAND = 5;
 const DEFAULT_KNOWLEDGE_TO_WIN = 10;
 const DEFAULT_QUICK_CHECK_EVERY_TURNS = 3;
+const SFX_EVENT_NAME = "acg:sfx";
 
 const AUTHOR_PROFILES = {
   Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
@@ -125,14 +126,29 @@ function createDeck() {
   return shuffle(cardPool.map(cloneCardTemplate));
 }
 
+function inferRarity(card) {
+  if (["prospero", "jabberwock", "vorpal_strike"].includes(card.key)) return "legendary";
+  if (card.subtype === "literary_device" || card.cost >= 3) return "rare";
+  return "common";
+}
+
 function cloneCardTemplate(card) {
   const cloned = { ...card, themes: card.themes ? [...card.themes] : [], quiz: card.quiz ? { ...card.quiz, options: [...card.quiz.options] } : null, value: card.value && typeof card.value === "object" ? { ...card.value } : card.value };
+  cloned.rarity = card.rarity || inferRarity(card);
   cloned.uid = `${card.key}_${uid++}`;
   if (cloned.type === "character") {
     cloned.currentMemorability = cloned.memorability;
     cloned.exhausted = false;
   }
   return cloned;
+}
+
+function emitSfx(name, detail = {}) {
+  const payload = { name, ...detail };
+  window.dispatchEvent(new CustomEvent(SFX_EVENT_NAME, { detail: payload }));
+  if (typeof window.__acgSfxHook === "function") {
+    window.__acgSfxHook(payload);
+  }
 }
 
 function shuffle(list) {
@@ -234,6 +250,7 @@ function initGame() {
   logEvent(`Theme objective: ${state.matchTheme.label}. ${state.matchTheme.description}`);
   logEvent(`Your Active Author: ${state.player.activeAuthor} (${AUTHOR_PROFILES[state.player.activeAuthor].passive})`);
   logEvent(`AI Active Author: ${state.ai.activeAuthor} (${AUTHOR_PROFILES[state.ai.activeAuthor].passive})`);
+  emitSfx("match_start");
   syncTeacherControlsFromState();
   render();
 }
@@ -264,6 +281,7 @@ function beginTurn(side) {
   });
   state.selectedAttackerUid = null;
   logEvent(`${side === "player" ? "Your turn" : "AI turn"}: Inspiration refilled to ${owner.inspiration}.`);
+  emitSfx("turn_start", { side });
 }
 
 function flashTarget(element) {
@@ -384,11 +402,13 @@ async function playCard(ownerKey, handIndex) {
   if (card.type === "character") {
     owner.board.push(card);
     logEvent(`${owner.name} summons ${card.name}.`);
+    emitSfx("card_play_character", { side: ownerKey, card: card.name, rarity: card.rarity });
     applyAuthorCharacterRules(ownerKey, card);
   } else {
     resolveEffect(ownerKey, card);
     owner.discard.push(card);
     logEvent(`${owner.name} plays ${card.name}.`);
+    emitSfx("card_play_spell", { side: ownerKey, card: card.name, rarity: card.rarity });
     if (card.subtype === "literary_device" && card.quiz) {
       await resolveKnowledgeCheck(ownerKey, card.quiz, `Literary Device: ${card.name}`);
     }
@@ -517,6 +537,7 @@ function attackUnit(attackerOwnerKey, attackerUid, defenderUid) {
   attacker.exhausted = true;
   state.selectedAttackerUid = null;
   logEvent(`${attacker.name} attacks ${defender.name} (${attackerDamage}/${defenderDamage} exchanged).`);
+  emitSfx("attack_unit", { attacker: attacker.name, defender: defender.name });
   cleanupDefeated();
   checkWinner();
   render();
@@ -536,6 +557,7 @@ function attackWriter(attackerOwnerKey, attackerUid) {
   flashTarget(targetPanel);
   spawnFloatingFx(`-${attacker.attack}`, targetPanel);
   logEvent(`${attacker.name} attacks Writer directly for ${attacker.attack}.`);
+  emitSfx("attack_writer", { attacker: attacker.name, damage: attacker.attack });
   checkWinner();
   render();
 }
@@ -560,6 +582,7 @@ function cleanupDefeated() {
         playLeaveFx(card.uid, key);
         owner.discard.push(card);
         logEvent(`${card.name} is defeated.`);
+        emitSfx("card_defeated", { side: key, card: card.name });
       } else {
         survivors.push(card);
       }
@@ -583,6 +606,7 @@ function checkWinner() {
         ? "knowledge track"
         : "reputation";
     logEvent(`Match over by ${reason}: ${state.winner === "player" ? "You win!" : "AI wins."}`);
+    emitSfx("match_end", { winner: state.winner, reason });
     showWinnerBanner();
     return true;
   }
@@ -644,6 +668,9 @@ function render() {
 function buildCardEl(card, options = {}) {
   const node = refs.cardTemplate.content.firstElementChild.cloneNode(true);
   node.dataset.cardUid = card.uid;
+  node.dataset.rarity = card.rarity;
+  node.classList.add(`rarity-${card.rarity}`);
+  node.querySelector(".rarity-badge").textContent = card.rarity;
   const costPreview =
     state.currentPlayer === "player" && !state.winner
       ? `Cost ${getCardCost(state.player, card)}`
@@ -745,6 +772,7 @@ function drawForPlayer() {
   state.player.hasDrawnThisTurn = true;
   spawnFloatingFx("+1 card", refs.playerPanel, "info");
   logEvent("You draw a card.");
+  emitSfx("draw_card", { side: "player" });
   render();
 }
 
@@ -779,6 +807,7 @@ async function runAiTurn() {
   state.ai.hasDrawnThisTurn = true;
   spawnFloatingFx("+1 card", refs.aiPanel, "info");
   logEvent("AI draws a card.");
+  emitSfx("draw_card", { side: "ai" });
   render();
   await sleep(350);
 
