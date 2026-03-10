@@ -3,6 +3,8 @@ const STARTING_REPUTATION = 15;
 const STARTING_HAND = 5;
 const DEFAULT_KNOWLEDGE_TO_WIN = 10;
 const DEFAULT_QUICK_CHECK_EVERY_TURNS = 3;
+const DEFAULT_ENABLE_THEME_BONUS = false;
+const DEFAULT_ENABLE_AUTHOR_KNOWLEDGE_BONUS = false;
 const SFX_EVENT_NAME = "acg:sfx";
 const DEBUG_DOM_UI = Boolean(window.__ACG_DEBUG_DOM_UI);
 const STATE_EVENT_NAME = "acg:state";
@@ -22,13 +24,94 @@ const MATCH_THEMES = [
   { key: "curiosity", label: "Theme: Curiosity", description: "Reward exploration, wonder, and questioning." },
 ];
 
-const QUICK_CHECK_BANK = [
+const QUICK_CHECK_BANKS = {
+  shakespeare: [
   {
     question: "Who wrote Macbeth?",
     options: ["William Shakespeare", "Lewis Carroll", "Mary Shelley"],
     correctIndex: 0,
     explanation: "Macbeth is a tragedy by Shakespeare.",
   },
+  {
+    question: "Which play features the characters Rosencrantz and Guildenstern?",
+    options: ["Hamlet", "Macbeth", "The Tempest"],
+    correctIndex: 0,
+    explanation: "Rosencrantz and Guildenstern appear in Hamlet.",
+  },
+  {
+    question: "Who says 'To be, or not to be'?",
+    options: ["Hamlet", "Macbeth", "Prospero"],
+    correctIndex: 0,
+    explanation: "Hamlet speaks the famous soliloquy in Hamlet.",
+  },
+  {
+    question: "Which Shakespeare play takes place partly in the Forest of Arden?",
+    options: ["As You Like It", "Julius Caesar", "Othello"],
+    correctIndex: 0,
+    explanation: "As You Like It is set partly in the Forest of Arden.",
+  },
+  {
+    question: "Which character is Macbeth's wife?",
+    options: ["Lady Macbeth", "Gertrude", "Beatrice"],
+    correctIndex: 0,
+    explanation: "Lady Macbeth urges Macbeth toward the crown.",
+  },
+  {
+    question: "What title best describes Prospero in The Tempest?",
+    options: ["Exiled duke and magician", "King of Denmark", "Roman senator"],
+    correctIndex: 0,
+    explanation: "Prospero is the exiled Duke of Milan and a magician.",
+  },
+  {
+    question: "Which Shakespeare tragedy centers on jealousy and manipulation?",
+    options: ["Othello", "A Midsummer Night's Dream", "Twelfth Night"],
+    correctIndex: 0,
+    explanation: "Othello focuses on jealousy, especially through Iago's manipulation.",
+  },
+  {
+    question: "Which Shakespeare play includes the Weird Sisters?",
+    options: ["Macbeth", "Hamlet", "King Lear"],
+    correctIndex: 0,
+    explanation: "The Weird Sisters are the witches in Macbeth.",
+  },
+  {
+    question: "In Shakespeare, what is Yorick's Skull most closely associated with?",
+    options: ["Mortality", "Comedy", "Royal marriage"],
+    correctIndex: 0,
+    explanation: "Yorick's Skull in Hamlet symbolizes mortality and memory.",
+  },
+  {
+    question: "Which Shakespeare play is about a shipwreck and reconciliation?",
+    options: ["The Tempest", "Richard III", "Romeo and Juliet"],
+    correctIndex: 0,
+    explanation: "The Tempest begins with a storm and ends in reconciliation.",
+  },
+  {
+    question: "Macbeth's tragic flaw is most closely tied to what?",
+    options: ["Ambition", "Laziness", "Humor"],
+    correctIndex: 0,
+    explanation: "Macbeth's destructive ambition drives the tragedy.",
+  },
+  {
+    question: "Which Shakespearean form has 14 lines?",
+    options: ["Sonnet", "Epic", "Novel"],
+    correctIndex: 0,
+    explanation: "A Shakespearean sonnet contains 14 lines.",
+  },
+  {
+    question: "Which character in Hamlet is Hamlet's mother?",
+    options: ["Gertrude", "Ophelia", "Cordelia"],
+    correctIndex: 0,
+    explanation: "Gertrude is the queen and Hamlet's mother.",
+  },
+  {
+    question: "Which play features a magician giving up his art at the end?",
+    options: ["The Tempest", "Macbeth", "Hamlet"],
+    correctIndex: 0,
+    explanation: "Prospero renounces magic near the end of The Tempest.",
+  },
+  ],
+  carroll: [
   {
     question: "Which character belongs to Lewis Carroll's Wonderland world?",
     options: ["Prospero", "Hamlet", "Cheshire Cat"],
@@ -47,7 +130,266 @@ const QUICK_CHECK_BANK = [
     correctIndex: 1,
     explanation: "Lewis Carroll wrote Alice's Adventures in Wonderland.",
   },
-];
+  {
+    question: "Which character is famous for always being in a hurry?",
+    options: ["White Rabbit", "Hamlet", "Banquo"],
+    correctIndex: 0,
+    explanation: "The White Rabbit rushes about with his pocket watch.",
+  },
+  {
+    question: "What phrase appears on the cake Alice finds?",
+    options: ["Eat Me", "Open Me", "Read Me"],
+    correctIndex: 0,
+    explanation: "Alice finds a cake labeled 'Eat Me.'",
+  },
+  {
+    question: "Which Wonderland ruler is known for shouting orders?",
+    options: ["Queen of Hearts", "Lady Macbeth", "Titania"],
+    correctIndex: 0,
+    explanation: "The Queen of Hearts is known for dramatic commands.",
+  },
+  {
+    question: "Which Lewis Carroll poem features the Jabberwock?",
+    options: ["Jabberwocky", "The Raven", "Ozymandias"],
+    correctIndex: 0,
+    explanation: "The creature appears in Carroll's poem Jabberwocky.",
+  },
+  {
+    question: "What object makes the White Rabbit instantly recognizable?",
+    options: ["A pocket watch", "A crown", "A sword"],
+    correctIndex: 0,
+    explanation: "The White Rabbit is associated with his pocket watch.",
+  },
+  {
+    question: "Which Wonderland character can appear and disappear?",
+    options: ["Cheshire Cat", "Macduff", "Horatio"],
+    correctIndex: 0,
+    explanation: "The Cheshire Cat famously fades in and out.",
+  },
+  {
+    question: "Lewis Carroll's Alice stories are best known for what quality?",
+    options: ["Playful nonsense and logic games", "Strict historical realism", "Scientific reporting"],
+    correctIndex: 0,
+    explanation: "The Alice books are known for wordplay, nonsense, and logic puzzles.",
+  },
+  {
+    question: "Which sequel follows Alice's Adventures in Wonderland?",
+    options: ["Through the Looking-Glass", "Treasure Island", "Peter Pan"],
+    correctIndex: 0,
+    explanation: "Through the Looking-Glass is Carroll's sequel to Alice's Adventures in Wonderland.",
+  },
+  {
+    question: "What animal joins the Mad Tea Party scene?",
+    options: ["March Hare", "Falcon", "Wolf"],
+    correctIndex: 0,
+    explanation: "The March Hare is one of the tea party characters.",
+  },
+  {
+    question: "The Mad Hatter scene is mainly known for what?",
+    options: ["Absurd conversation", "A battlefield", "A courtroom speech"],
+    correctIndex: 0,
+    explanation: "The Mad Tea Party scene is famous for absurd conversation and riddles.",
+  },
+  {
+    question: "Which setting is central to Through the Looking-Glass?",
+    options: ["A mirror world", "A haunted castle", "An island storm"],
+    correctIndex: 0,
+    explanation: "Alice enters a mirror world in Through the Looking-Glass.",
+  },
+  {
+    question: "What does Wonderland often challenge?",
+    options: ["Normal logic and expectations", "Only battle tactics", "Only geography"],
+    correctIndex: 0,
+    explanation: "Wonderland scenes often twist logic, language, and expectation.",
+  },
+  ],
+  literaryTerms: [
+  {
+    question: "What is a soliloquy?",
+    options: ["A private speech revealing thoughts", "A poem with 14 lines", "A speech by two people"],
+    correctIndex: 0,
+    explanation: "A soliloquy lets the audience hear a character's inner thoughts.",
+  },
+  {
+    question: "What does a soliloquy reveal?",
+    options: ["A character's inner thoughts", "A chorus response", "A stage direction"],
+    correctIndex: 0,
+    explanation: "A soliloquy reveals what a character is thinking privately.",
+  },
+  {
+    question: "What is iambic pentameter?",
+    options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"],
+    correctIndex: 0,
+    explanation: "Iambic pentameter is a 10-syllable line with five iambs.",
+  },
+  {
+    question: "What is a metaphor?",
+    options: ["A comparison without using 'like' or 'as'", "A list of characters", "A stage direction"],
+    correctIndex: 0,
+    explanation: "A metaphor compares unlike things directly.",
+  },
+  {
+    question: "What is a simile?",
+    options: ["A comparison using 'like' or 'as'", "A repeated consonant sound", "A sudden plot twist"],
+    correctIndex: 0,
+    explanation: "A simile compares two things using 'like' or 'as.'",
+  },
+  {
+    question: "What is alliteration?",
+    options: ["Repeated beginning consonant sounds", "A final speech in a play", "A type of novel"],
+    correctIndex: 0,
+    explanation: "Alliteration repeats initial consonant sounds in nearby words.",
+  },
+  {
+    question: "What is a theme in literature?",
+    options: ["A central idea or message", "A table of contents", "Only the setting"],
+    correctIndex: 0,
+    explanation: "A theme is a central idea explored in a work.",
+  },
+  {
+    question: "What is a protagonist?",
+    options: ["The main character", "The author of the story", "The final chapter"],
+    correctIndex: 0,
+    explanation: "The protagonist is the central character in a narrative.",
+  },
+  {
+    question: "What is an antagonist?",
+    options: ["A force opposing the main character", "A comic relief character", "The narrator"],
+    correctIndex: 0,
+    explanation: "An antagonist opposes the protagonist.",
+  },
+  {
+    question: "What is foreshadowing?",
+    options: ["Hints about later events", "A full summary of the ending", "A poem's rhyme pattern"],
+    correctIndex: 0,
+    explanation: "Foreshadowing gives clues about what may happen later.",
+  },
+  {
+    question: "What is dramatic irony?",
+    options: ["When the audience knows more than a character", "When every line rhymes", "When a play has no conflict"],
+    correctIndex: 0,
+    explanation: "Dramatic irony happens when the audience knows something a character does not.",
+  },
+  {
+    question: "What is a setting?",
+    options: ["The time and place of a story", "Only the title", "Only the conflict"],
+    correctIndex: 0,
+    explanation: "Setting describes where and when a story takes place.",
+  },
+  {
+    question: "What is conflict in literature?",
+    options: ["A struggle that drives the story", "A list of chapter titles", "A type of poem only"],
+    correctIndex: 0,
+    explanation: "Conflict is a struggle or problem that moves the story forward.",
+  },
+  {
+    question: "What is a narrator?",
+    options: ["The voice telling the story", "The strongest character", "The audience"],
+    correctIndex: 0,
+    explanation: "A narrator is the voice that tells the story.",
+  },
+  {
+    question: "What is personification?",
+    options: ["Giving human qualities to nonhuman things", "Using only first person", "Explaining a text in footnotes"],
+    correctIndex: 0,
+    explanation: "Personification gives human traits to animals, objects, or ideas.",
+  },
+  ],
+  generalLiterature: [
+  {
+    question: "Who wrote Alice's Adventures in Wonderland?",
+    options: ["Jane Austen", "Lewis Carroll", "Charles Dickens"],
+    correctIndex: 1,
+    explanation: "Lewis Carroll wrote Alice's Adventures in Wonderland.",
+  },
+  {
+    question: "A tragedy usually ends with what kind of outcome?",
+    options: ["A serious or disastrous outcome", "A joke competition", "A travel guide"],
+    correctIndex: 0,
+    explanation: "A tragedy usually ends with serious loss or suffering.",
+  },
+  {
+    question: "A comedy in literature usually tends toward what?",
+    options: ["A lighter or happier resolution", "Only battles", "No conflict at all"],
+    correctIndex: 0,
+    explanation: "Comedies usually move toward a lighter resolution.",
+  },
+  {
+    question: "Which of these is a genre?",
+    options: ["Tragedy", "Paragraph", "Footnote"],
+    correctIndex: 0,
+    explanation: "Tragedy is a literary genre.",
+  },
+  {
+    question: "What is the purpose of an explanation in a classroom quiz?",
+    options: ["To teach why an answer is correct", "To hide the topic", "To replace the question"],
+    correctIndex: 0,
+    explanation: "The explanation helps students understand the reasoning behind the answer.",
+  },
+  {
+    question: "Which skill is most important in close reading?",
+    options: ["Paying attention to word choice and detail", "Skipping directly to the ending", "Ignoring context"],
+    correctIndex: 0,
+    explanation: "Close reading focuses on language, structure, and detail.",
+  },
+  {
+    question: "An author's word choice is often called what?",
+    options: ["Diction", "Setting", "Staging"],
+    correctIndex: 0,
+    explanation: "Diction refers to an author's choice of words.",
+  },
+  {
+    question: "What is a symbol in literature?",
+    options: ["Something that stands for a larger idea", "Only a punctuation mark", "A list of page numbers"],
+    correctIndex: 0,
+    explanation: "A symbol represents a larger idea beyond its literal meaning.",
+  },
+  {
+    question: "What is the best definition of plot?",
+    options: ["The sequence of events in a story", "The color of a book cover", "The author's signature"],
+    correctIndex: 0,
+    explanation: "Plot is the sequence of events in a narrative.",
+  },
+  {
+    question: "What does it mean to infer while reading?",
+    options: ["Use clues to figure something out", "Memorize every line exactly", "Ignore the text"],
+    correctIndex: 0,
+    explanation: "Inference means using textual clues and reasoning to reach a conclusion.",
+  },
+  {
+    question: "What kind of text is a play primarily written to be?",
+    options: ["Performed", "Cooked", "Painted"],
+    correctIndex: 0,
+    explanation: "A play is written to be performed.",
+  },
+  {
+    question: "Why do writers use imagery?",
+    options: ["To create vivid sensory detail", "To remove all description", "To avoid any meaning"],
+    correctIndex: 0,
+    explanation: "Imagery appeals to the senses to make writing vivid.",
+  },
+  {
+    question: "What is the main goal of literary analysis?",
+    options: ["To explain how a text creates meaning", "To count every word only", "To rewrite the ending"],
+    correctIndex: 0,
+    explanation: "Literary analysis explains how a text's details and choices create meaning.",
+  },
+  {
+    question: "Which is usually the best evidence in a literature discussion?",
+    options: ["Specific details from the text", "A random guess", "An unrelated opinion"],
+    correctIndex: 0,
+    explanation: "Strong literary discussion relies on specific textual evidence.",
+  },
+  {
+    question: "What is the tone of a text?",
+    options: ["The writer's attitude toward the subject", "The page number", "The font size"],
+    correctIndex: 0,
+    explanation: "Tone is the author's or speaker's attitude toward the subject.",
+  },
+  ],
+};
+
+const QUICK_CHECK_BANK = Object.values(QUICK_CHECK_BANKS).flat();
 
 const refs = {
   aiRep: document.getElementById("ai-rep"),
@@ -122,9 +464,18 @@ let uid = 1;
 let state;
 let prevBoardUids = { player: new Set(), ai: new Set() };
 const stateSubscribers = new Set();
+
+function createDefaultSettings() {
+  return {
+    knowledgeToWin: DEFAULT_KNOWLEDGE_TO_WIN,
+    quickCheckEveryTurns: DEFAULT_QUICK_CHECK_EVERY_TURNS,
+    enableThemeBonus: DEFAULT_ENABLE_THEME_BONUS,
+    enableAuthorKnowledgeBonus: DEFAULT_ENABLE_AUTHOR_KNOWLEDGE_BONUS,
+  };
+}
+
 let teacherSettings = {
-  knowledgeToWin: DEFAULT_KNOWLEDGE_TO_WIN,
-  quickCheckEveryTurns: DEFAULT_QUICK_CHECK_EVERY_TURNS,
+  ...createDefaultSettings(),
 };
 const sfxState = {
   muted: localStorage.getItem("acg_sfx_muted") === "1",
@@ -491,6 +842,14 @@ function addKnowledge(ownerKey, amount, reason) {
   logEvent(`${owner.name} gains ${amount} Knowledge (${reason}).`);
 }
 
+function isThemeBonusEnabled() {
+  return state?.settings?.enableThemeBonus !== false;
+}
+
+function isAuthorKnowledgeBonusEnabled() {
+  return state?.settings?.enableAuthorKnowledgeBonus !== false;
+}
+
 function showWinnerBanner() {
   if (!state.winner) return;
   if (!DEBUG_DOM_UI) {
@@ -530,7 +889,11 @@ function syncTeacherControlsFromState() {
 function applyTeacherSettings() {
   const knowledgeToWin = Math.max(3, Math.min(20, Number.parseInt(refs.teacherKnowledgeTarget.value, 10) || DEFAULT_KNOWLEDGE_TO_WIN));
   const quickCheckEveryTurns = Math.max(2, Math.min(6, Number.parseInt(refs.teacherQuizFrequency.value, 10) || DEFAULT_QUICK_CHECK_EVERY_TURNS));
-  teacherSettings = { knowledgeToWin, quickCheckEveryTurns };
+  teacherSettings = {
+    ...teacherSettings,
+    knowledgeToWin,
+    quickCheckEveryTurns,
+  };
   if (state) {
     state.settings = { ...teacherSettings };
     syncTeacherControlsFromState();
@@ -712,15 +1075,21 @@ function applyThemeObjective(ownerKey, card) {
   if (!card.themes || !card.themes.includes(state.matchTheme.key)) return;
   const owner = state[ownerKey];
   owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + 1);
-  addKnowledge(ownerKey, 1, `matched theme ${state.matchTheme.label}`);
-  spawnFloatingFx("Theme Match  +1 Insp  +1 Knw", panelForOwner(ownerKey), "info");
+  if (isThemeBonusEnabled()) {
+    addKnowledge(ownerKey, 1, `matched theme ${state.matchTheme.label}`);
+    spawnFloatingFx("Theme Match  +1 Insp  +1 Knw", panelForOwner(ownerKey), "info");
+    return;
+  }
+  spawnFloatingFx("Theme Match  +1 Insp", panelForOwner(ownerKey), "info");
 }
 
 function applyAuthorCharacterRules(ownerKey, card) {
   const owner = state[ownerKey];
   const profile = AUTHOR_PROFILES[owner.activeAuthor];
   if (card.author === owner.activeAuthor) {
-    addKnowledge(ownerKey, 1, `matched active author ${owner.activeAuthor}`);
+    if (isAuthorKnowledgeBonusEnabled()) {
+      addKnowledge(ownerKey, 1, `matched active author ${owner.activeAuthor}`);
+    }
     spawnFloatingFx("Author Match", cardElementByUid(card.uid) || panelForOwner(ownerKey), "heal");
     if (card.themes.includes(profile.bonusTag)) {
       if (owner.activeAuthor === "Shakespeare") {
