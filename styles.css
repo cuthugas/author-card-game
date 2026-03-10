@@ -260,6 +260,11 @@ body {
   color: #1a2e17;
 }
 
+#audio-toggle-btn.audio-off {
+  background: linear-gradient(180deg, #e8d7d7, #d0b1b1);
+  color: #3d1d1d;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -286,6 +291,10 @@ body {
 
 #new-game-btn::before {
   content: "⟳";
+}
+
+#audio-toggle-btn::before {
+  content: "♪";
 }
 
 #draw-btn::before {

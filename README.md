@@ -40,10 +40,12 @@ Then open:
 - Art assets are not yet integrated; this uses card text-only UI.
 
 ## Sound Hook Integration
-This build emits audio-ready hooks without bundling audio files yet.
+This build emits audio-ready hooks and now includes a built-in Web Audio synth SFX layer.
 
 - Global custom event: `acg:sfx`
 - Optional function hook: `window.__acgSfxHook = (payload) => { ... }`
+- HUD toggle: `SFX On` / `SFX Off` (persists via `localStorage`)
+- Audio unlock: first pointer or keyboard interaction (mobile-safe)
 
 Sample payload:
 

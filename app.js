@@ -68,6 +68,7 @@ const refs = {
   toggleLogBtn: document.getElementById("toggle-log-btn"),
   toggleTeacherBtn: document.getElementById("toggle-teacher-btn"),
   toggleRulesBtn: document.getElementById("toggle-rules-btn"),
+  audioToggleBtn: document.getElementById("audio-toggle-btn"),
   teacherKnowledgeTarget: document.getElementById("teacher-knowledge-target"),
   teacherQuizFrequency: document.getElementById("teacher-quiz-frequency"),
   teacherApplyBtn: document.getElementById("teacher-apply-btn"),
@@ -117,6 +118,11 @@ let teacherSettings = {
   knowledgeToWin: DEFAULT_KNOWLEDGE_TO_WIN,
   quickCheckEveryTurns: DEFAULT_QUICK_CHECK_EVERY_TURNS,
 };
+const sfxState = {
+  muted: localStorage.getItem("acg_sfx_muted") === "1",
+  unlocked: false,
+  context: null,
+};
 
 function newPlayer(name, activeAuthor) {
   return { name, reputation: STARTING_REPUTATION, maxInspiration: 0, inspiration: 0, knowledge: 0, activeAuthor, deck: createDeck(), hand: [], board: [], discard: [], hasDrawnThisTurn: false };
@@ -148,6 +154,106 @@ function emitSfx(name, detail = {}) {
   window.dispatchEvent(new CustomEvent(SFX_EVENT_NAME, { detail: payload }));
   if (typeof window.__acgSfxHook === "function") {
     window.__acgSfxHook(payload);
+  }
+}
+
+function ensureAudioContext() {
+  if (!sfxState.context) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    sfxState.context = new Ctx();
+  }
+  return sfxState.context;
+}
+
+function updateAudioToggleUi() {
+  refs.audioToggleBtn.textContent = sfxState.muted ? "SFX Off" : "SFX On";
+  refs.audioToggleBtn.classList.toggle("audio-off", sfxState.muted);
+}
+
+async function unlockAudio() {
+  if (sfxState.unlocked) return;
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+  if (ctx.state === "suspended") {
+    try {
+      await ctx.resume();
+    } catch {
+      return;
+    }
+  }
+  sfxState.unlocked = true;
+}
+
+function playTone(freq, duration = 0.08, type = "sine", gainValue = 0.035, whenOffset = 0) {
+  if (sfxState.muted || !sfxState.unlocked) return;
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime + whenOffset;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + duration + 0.01);
+}
+
+function playSfxByName(name) {
+  switch (name) {
+    case "match_start":
+      playTone(392, 0.1, "triangle", 0.045, 0);
+      playTone(523.25, 0.12, "triangle", 0.045, 0.11);
+      break;
+    case "turn_start":
+      playTone(523.25, 0.06, "sine", 0.03, 0);
+      break;
+    case "draw_card":
+      playTone(659.25, 0.055, "triangle", 0.03, 0);
+      playTone(783.99, 0.06, "triangle", 0.03, 0.055);
+      break;
+    case "card_play_character":
+      playTone(220, 0.08, "square", 0.03, 0);
+      playTone(277.18, 0.08, "square", 0.03, 0.08);
+      break;
+    case "card_play_spell":
+      playTone(740, 0.09, "sawtooth", 0.028, 0);
+      playTone(932, 0.08, "sine", 0.024, 0.09);
+      break;
+    case "attack_unit":
+      playTone(130.81, 0.07, "square", 0.04, 0);
+      break;
+    case "attack_writer":
+      playTone(110, 0.095, "square", 0.05, 0);
+      break;
+    case "card_defeated":
+      playTone(196, 0.06, "triangle", 0.03, 0);
+      playTone(146.83, 0.08, "triangle", 0.03, 0.06);
+      break;
+    case "match_end":
+      playTone(523.25, 0.1, "triangle", 0.045, 0);
+      playTone(659.25, 0.1, "triangle", 0.045, 0.11);
+      playTone(783.99, 0.14, "triangle", 0.05, 0.22);
+      break;
+    default:
+      break;
+  }
+}
+
+function handleSfxEvent(e) {
+  if (!e?.detail?.name) return;
+  playSfxByName(e.detail.name);
+}
+
+function toggleSfx() {
+  sfxState.muted = !sfxState.muted;
+  localStorage.setItem("acg_sfx_muted", sfxState.muted ? "1" : "0");
+  updateAudioToggleUi();
+  if (!sfxState.muted) {
+    unlockAudio().then(() => playTone(659.25, 0.05, "sine", 0.03, 0));
   }
 }
 
@@ -855,9 +961,14 @@ refs.endTurnBtn.addEventListener("click", endPlayerTurn);
 refs.toggleLogBtn.addEventListener("click", () => toggleDrawer(refs.logPanel));
 refs.toggleTeacherBtn.addEventListener("click", () => toggleDrawer(refs.teacherPanel));
 refs.toggleRulesBtn.addEventListener("click", () => toggleDrawer(refs.rulesPanel));
+refs.audioToggleBtn.addEventListener("click", toggleSfx);
 refs.teacherApplyBtn.addEventListener("click", applyTeacherSettings);
 refs.newGameBtn.addEventListener("click", initGame);
 refs.playAgainBtn.addEventListener("click", initGame);
+window.addEventListener(SFX_EVENT_NAME, handleSfxEvent);
+window.addEventListener("pointerdown", unlockAudio, { once: true });
+window.addEventListener("keydown", unlockAudio, { once: true });
+updateAudioToggleUi();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
