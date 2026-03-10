@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -15,10 +15,10 @@
       <header class="topbar">
         <h1>Author Card Game</h1>
         <div class="topbar-actions">
-          <button id="toggle-log-btn" class="button icon-button secondary" title="Match Log">📜 Log</button>
-          <button id="toggle-teacher-btn" class="button icon-button secondary" title="Teacher Mode">🎓 Teacher</button>
-          <button id="toggle-rules-btn" class="button icon-button secondary" title="Rules">📘 Rules</button>
-          <button id="new-game-btn" class="button icon-button secondary">🔄 New</button>
+          <button id="toggle-log-btn" class="button icon-button secondary" title="Match Log">Log</button>
+          <button id="toggle-teacher-btn" class="button icon-button secondary" title="Teacher Mode">Teacher</button>
+          <button id="toggle-rules-btn" class="button icon-button secondary" title="Rules">Rules</button>
+          <button id="new-game-btn" class="button icon-button secondary">New</button>
         </div>
       </header>
 
@@ -26,12 +26,12 @@
         <article id="ai-panel" class="panel enemy">
           <h2>AI Writer</h2>
           <div class="stats">
-            <span class="stat-pill" title="Reputation">❤ <strong id="ai-rep">0</strong></span>
-            <span class="stat-pill" title="Inspiration">✦ <strong id="ai-insp">0</strong></span>
-            <span class="stat-pill" title="Knowledge">🧠 <strong id="ai-knowledge">0</strong></span>
-            <span class="stat-pill" title="Author">✍ <strong id="ai-author">-</strong></span>
-            <span class="stat-pill" title="Deck">🗂 <strong id="ai-deck">0</strong></span>
-            <span class="stat-pill" title="Hand">🃏 <strong id="ai-hand">0</strong></span>
+            <span class="stat-pill stat-hp" title="Reputation">REP <strong id="ai-rep">0</strong></span>
+            <span class="stat-pill stat-insp" title="Inspiration">INSP <strong id="ai-insp">0</strong></span>
+            <span class="stat-pill stat-know" title="Knowledge">KNW <strong id="ai-knowledge">0</strong></span>
+            <span class="stat-pill stat-author" title="Author">AUTH <strong id="ai-author">-</strong></span>
+            <span class="stat-pill stat-deck" title="Deck">DECK <strong id="ai-deck">0</strong></span>
+            <span class="stat-pill stat-hand" title="Hand">HAND <strong id="ai-hand">0</strong></span>
           </div>
         </article>
 
@@ -52,12 +52,12 @@
         <article id="player-panel" class="panel player">
           <h2>Your Writer</h2>
           <div class="stats">
-            <span class="stat-pill" title="Reputation">❤ <strong id="player-rep">0</strong></span>
-            <span class="stat-pill" title="Inspiration">✦ <strong id="player-insp">0</strong></span>
-            <span class="stat-pill" title="Knowledge">🧠 <strong id="player-knowledge">0</strong></span>
-            <span class="stat-pill" title="Author">✍ <strong id="player-author">-</strong></span>
-            <span class="stat-pill" title="Deck">🗂 <strong id="player-deck">0</strong></span>
-            <span class="stat-pill" title="Hand">🃏 <strong id="player-hand">0</strong></span>
+            <span class="stat-pill stat-hp" title="Reputation">REP <strong id="player-rep">0</strong></span>
+            <span class="stat-pill stat-insp" title="Inspiration">INSP <strong id="player-insp">0</strong></span>
+            <span class="stat-pill stat-know" title="Knowledge">KNW <strong id="player-knowledge">0</strong></span>
+            <span class="stat-pill stat-author" title="Author">AUTH <strong id="player-author">-</strong></span>
+            <span class="stat-pill stat-deck" title="Deck">DECK <strong id="player-deck">0</strong></span>
+            <span class="stat-pill stat-hand" title="Hand">HAND <strong id="player-hand">0</strong></span>
           </div>
         </article>
       </section>
@@ -69,8 +69,8 @@
           <p id="theme-label">Theme</p>
         </div>
         <div class="actions">
-          <button id="draw-btn" class="button icon-button">📥 Draw</button>
-          <button id="end-turn-btn" class="button icon-button primary">⏭ End Turn</button>
+          <button id="draw-btn" class="button icon-button">Draw</button>
+          <button id="end-turn-btn" class="button icon-button primary">End Turn</button>
         </div>
       </section>
 
