@@ -596,6 +596,14 @@ function logEvent(text) {
   refs.log.prepend(entry);
 }
 
+function updateTurnPanelStyles() {
+  refs.playerPanel.classList.remove("active-turn");
+  refs.aiPanel.classList.remove("active-turn");
+  if (state.winner) return;
+  if (state.currentPlayer === "player") refs.playerPanel.classList.add("active-turn");
+  if (state.currentPlayer === "ai") refs.aiPanel.classList.add("active-turn");
+}
+
 function render() {
   const { player, ai } = state;
   const knowledgeToWin = state.settings.knowledgeToWin;
@@ -626,6 +634,7 @@ function render() {
   refs.endTurnBtn.disabled = state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz;
 
   if (!state.winner) hideWinnerBanner();
+  updateTurnPanelStyles();
 
   renderPlayerHand();
   renderBoard("ai");
