@@ -357,6 +357,14 @@ function toggleSfx() {
   }
 }
 
+function runScreenIntro() {
+  const fade = document.getElementById("screen-fade");
+  if (!fade) return;
+  requestAnimationFrame(() => {
+    fade.classList.add("ready");
+  });
+}
+
 function shuffle(list) {
   const arr = [...list];
   for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -1077,6 +1085,7 @@ window.addEventListener(SFX_EVENT_NAME, handleSfxEvent);
 window.addEventListener("pointerdown", unlockAudio, { once: true });
 window.addEventListener("keydown", unlockAudio, { once: true });
 updateAudioToggleUi();
+runScreenIntro();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

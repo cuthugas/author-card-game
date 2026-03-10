@@ -26,6 +26,27 @@ body {
     linear-gradient(160deg, var(--bg-deep), var(--bg-mid));
 }
 
+#phaser-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.screen-fade {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: radial-gradient(circle at 50% 48%, rgba(8, 12, 22, 0.76), rgba(4, 7, 14, 1));
+  opacity: 1;
+  transition: opacity 520ms ease;
+  pointer-events: none;
+}
+
+.screen-fade.ready {
+  opacity: 0;
+}
+
 .app {
   width: min(100vw, calc(100dvh * 1.78));
   height: min(100dvh, calc(100vw / 1.78));
@@ -37,6 +58,8 @@ body {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  position: relative;
+  z-index: 10;
 }
 
 .topbar {
@@ -68,6 +91,7 @@ body {
     linear-gradient(180deg, rgba(19, 27, 44, 0.72), rgba(10, 15, 28, 0.78)),
     radial-gradient(circle at 12% 10%, rgba(235, 203, 152, 0.08), transparent 25%);
   padding: 7px;
+  backdrop-filter: blur(1.5px);
 }
 
 .arena {
@@ -101,6 +125,7 @@ body {
     linear-gradient(180deg, #fbf7ea, #e8dbc1),
     repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.02) 0 3px, rgba(0, 0, 0, 0) 3px 6px);
   transition: box-shadow 240ms ease, transform 240ms ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .panel h2 {
@@ -177,6 +202,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 6px;
   position: relative;
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.28), inset 0 -6px 12px rgba(0, 0, 0, 0.24);
 }
 
 .board::before {
@@ -410,6 +436,7 @@ body {
   padding: 8px;
   overflow: auto;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  z-index: 40;
 }
 
 .drawer h3 { margin: 0 0 8px; }
