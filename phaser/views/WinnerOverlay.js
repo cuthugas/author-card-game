@@ -27,9 +27,9 @@ export class WinnerOverlay extends Phaser.GameObjects.Container {
       .setOrigin(0.5);
 
     this.restartBtn = scene.add.container(0, 86);
-    const btnGlow = scene.add.image(0, 0, "button-glow").setDisplaySize(246, 84).setAlpha(0.35);
-    const btnBase = scene.add.image(0, 0, "button-base").setDisplaySize(220, 66);
-    const btnText = scene.add
+    this.btnGlow = scene.add.image(0, 0, "button-glow").setDisplaySize(246, 84).setAlpha(0.35);
+    this.btnBase = scene.add.image(0, 0, "button-base").setDisplaySize(220, 66);
+    this.btnText = scene.add
       .text(0, 0, "Play Again", {
         fontFamily: "Cinzel",
         fontSize: "30px",
@@ -39,18 +39,18 @@ export class WinnerOverlay extends Phaser.GameObjects.Container {
       })
       .setOrigin(0.5);
 
-    this.restartBtn.add([btnGlow, btnBase, btnText]);
+    this.restartBtn.add([this.btnGlow, this.btnBase, this.btnText]);
     this.restartBtn.setSize(220, 66);
-    btnBase.setInteractive({ useHandCursor: true });
-    btnBase.on("pointerover", () => {
+    this.btnBase.setInteractive({ useHandCursor: true });
+    this.btnBase.on("pointerover", () => {
       this.scene.tweens.add({ targets: this.restartBtn, scaleX: 1.04, scaleY: 1.04, duration: 110 });
-      this.scene.tweens.add({ targets: btnGlow, alpha: 0.62, duration: 110 });
+      this.scene.tweens.add({ targets: this.btnGlow, alpha: 0.62, duration: 110 });
     });
-    btnBase.on("pointerout", () => {
+    this.btnBase.on("pointerout", () => {
       this.scene.tweens.add({ targets: this.restartBtn, scaleX: 1, scaleY: 1, duration: 110 });
-      this.scene.tweens.add({ targets: btnGlow, alpha: 0.35, duration: 110 });
+      this.scene.tweens.add({ targets: this.btnGlow, alpha: 0.35, duration: 110 });
     });
-    btnBase.on("pointerdown", (pointer, localX, localY, event) => {
+    this.btnBase.on("pointerdown", (pointer, localX, localY, event) => {
       event?.stopPropagation();
       this.onRestart?.();
     });
@@ -67,15 +67,20 @@ export class WinnerOverlay extends Phaser.GameObjects.Container {
   layout(width, height) {
     this.setPosition(width * 0.5, height * 0.5);
     this.scrim.setSize(width, height);
-    const compact = width < 1100;
-    const pw = compact ? Math.min(width * 0.82, 500) : 560;
-    const ph = compact ? Math.min(height * 0.56, 280) : 300;
+    const compact = width < 900 || height < 600;
+    const pw = compact ? Math.min(width * 0.88, 440) : width < 1100 ? Math.min(width * 0.82, 500) : 560;
+    const ph = compact ? Math.min(height * 0.72, 250) : width < 1100 ? Math.min(height * 0.56, 280) : 300;
     this.panel.setDisplaySize(pw, ph);
     this.edge.setDisplaySize(pw + 6, ph + 6);
-    this.title.setFontSize(compact ? 48 : 58);
+    this.title.setFontSize(compact ? 34 : width < 1100 ? 48 : 58);
     this.title.setPosition(0, -ph * 0.2);
+    this.reason.setFontSize(compact ? "18px" : "28px");
     this.reason.setPosition(0, 2);
-    this.restartBtn.setPosition(0, ph * 0.28);
+    this.btnGlow.setDisplaySize(compact ? 190 : 246, compact ? 64 : 84);
+    this.btnBase.setDisplaySize(compact ? 172 : 220, compact ? 48 : 66);
+    this.btnText.setFontSize(compact ? "22px" : "30px");
+    this.restartBtn.setSize(compact ? 172 : 220, compact ? 48 : 66);
+    this.restartBtn.setPosition(0, ph * (compact ? 0.24 : 0.28));
   }
 
   show(data) {

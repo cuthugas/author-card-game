@@ -7,6 +7,8 @@ const SFX_EVENT_NAME = "acg:sfx";
 const DEBUG_DOM_UI = Boolean(window.__ACG_DEBUG_DOM_UI);
 const STATE_EVENT_NAME = "acg:state";
 const FX_EVENT_NAME = "acg:fx";
+const PHONE_LAYOUT_MAX_HEIGHT = 1100;
+const PHONE_ROTATE_SHORT_SIDE = 600;
 
 const AUTHOR_PROFILES = {
   Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
@@ -91,6 +93,8 @@ const refs = {
   quizQuestion: document.getElementById("quiz-question"),
   quizOptions: document.getElementById("quiz-options"),
   cardTemplate: document.getElementById("card-template"),
+  app: document.querySelector(".app"),
+  rotateWarning: document.getElementById("rotate-warning"),
 };
 
 const cardPool = [
@@ -134,6 +138,9 @@ const sfxState = {
 const phaserUiBridge = {
   quizHandler: null,
   winnerHandler: null,
+};
+const viewportState = {
+  syncFrame: 0,
 };
 
 function stateSnapshot() {
@@ -386,6 +393,73 @@ function runScreenIntro() {
   requestAnimationFrame(() => {
     fade.classList.add("ready");
   });
+}
+
+function getViewportMetrics() {
+  const viewport = window.visualViewport;
+  const width = Math.round(viewport?.width || window.innerWidth || document.documentElement.clientWidth || 0);
+  const height = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+  return {
+    width,
+    height,
+    shortSide: Math.min(width, height),
+    longSide: Math.max(width, height),
+  };
+}
+
+function isLikelyMobileDevice() {
+  return (
+    window.matchMedia?.("(pointer: coarse)")?.matches ||
+    navigator.maxTouchPoints > 0 ||
+    "ontouchstart" in window
+  );
+}
+
+function shouldShowRotateWarning(metrics) {
+  if (!isLikelyMobileDevice()) return false;
+  const isPortrait = metrics.height > metrics.width;
+  const isPhoneViewport =
+    metrics.shortSide <= PHONE_ROTATE_SHORT_SIDE && metrics.longSide <= PHONE_LAYOUT_MAX_HEIGHT;
+  return isPortrait && isPhoneViewport;
+}
+
+function syncViewportState() {
+  viewportState.syncFrame = 0;
+  const metrics = getViewportMetrics();
+  const rotateRequired = shouldShowRotateWarning(metrics);
+
+  document.documentElement.style.setProperty("--app-width", `${metrics.width}px`);
+  document.documentElement.style.setProperty("--app-height", `${metrics.height}px`);
+  document.body.classList.toggle("rotate-required", rotateRequired);
+
+  if (refs.rotateWarning) {
+    refs.rotateWarning.classList.toggle("hidden", !rotateRequired);
+    refs.rotateWarning.setAttribute("aria-hidden", rotateRequired ? "false" : "true");
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("acg:viewport", {
+      detail: { ...metrics, rotateRequired },
+    })
+  );
+}
+
+function queueViewportSync() {
+  if (viewportState.syncFrame) return;
+  viewportState.syncFrame = requestAnimationFrame(() => {
+    viewportState.syncFrame = requestAnimationFrame(syncViewportState);
+  });
+}
+
+function bindViewportState() {
+  ["resize", "orientationchange", "load", "pageshow"].forEach((eventName) => {
+    window.addEventListener(eventName, queueViewportSync);
+  });
+
+  window.visualViewport?.addEventListener("resize", queueViewportSync);
+  window.visualViewport?.addEventListener("scroll", queueViewportSync);
+  window.screen?.orientation?.addEventListener?.("change", queueViewportSync);
+  queueViewportSync();
 }
 
 function shuffle(list) {
@@ -1210,6 +1284,7 @@ window.addEventListener(SFX_EVENT_NAME, handleSfxEvent);
 window.addEventListener("pointerdown", unlockAudio, { once: true });
 window.addEventListener("keydown", unlockAudio, { once: true });
 updateAudioToggleUi();
+bindViewportState();
 runScreenIntro();
 
 if ("serviceWorker" in navigator) {

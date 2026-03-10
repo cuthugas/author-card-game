@@ -6,6 +6,8 @@
   --accent: #d39a40;
   --danger: #be4a4a;
   --good: #2f8c5f;
+  --app-width: 100vw;
+  --app-height: 100dvh;
 }
 
 * {
@@ -14,7 +16,7 @@
 
 body {
   margin: 0;
-  min-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
   overflow: hidden;
   color: var(--text-light);
   font-family: Georgia, "Times New Roman", serif;
@@ -48,8 +50,8 @@ body {
 }
 
 .app {
-  width: min(100vw, calc(100dvh * 1.78));
-  height: min(100dvh, calc(100vw / 1.78));
+  width: min(var(--app-width, 100vw), calc(var(--app-height, 100dvh) * 1.78));
+  height: min(var(--app-height, 100dvh), calc(var(--app-width, 100vw) / 1.78));
   margin: 0 auto;
   padding: 7px;
   display: grid;
@@ -556,6 +558,16 @@ body:not(.debug-dom-ui) #fx-layer {
   place-items: center;
 }
 
+body.rotate-required .rotate-warning {
+  display: grid;
+}
+
+body.rotate-required .app,
+body.rotate-required #phaser-stage {
+  filter: blur(2px) saturate(0.8);
+  pointer-events: none;
+}
+
 .rotate-card {
   width: min(86vw, 340px);
   border-radius: 14px;
@@ -606,20 +618,55 @@ body:not(.debug-dom-ui) #fx-layer {
   to { transform: translateX(40%); }
 }
 
+@media (max-width: 900px) {
+  .app {
+    width: 100vw;
+    height: 100dvh;
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+    gap: 8px;
+  }
+
+  .controls {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .turn-info,
+  .actions {
+    width: 100%;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .actions .button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .drawer {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    width: auto;
+    max-height: min(68dvh, 420px);
+  }
+
+  .quiz-content,
+  .winner-content {
+    width: min(94vw, 560px);
+    max-height: min(88dvh, 560px);
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 760px) {
   .topbar { flex-wrap: wrap; gap: 6px; }
   .topbar-actions { width: 100%; overflow-x: auto; padding-bottom: 2px; }
   .teacher-controls { grid-template-columns: 1fr; }
   .card { flex-basis: 118px; min-height: 86px; }
-}
-
-@media (orientation: portrait) {
-  .rotate-warning {
-    display: grid;
-  }
-
-  .app {
-    filter: blur(2px) saturate(0.8);
-    pointer-events: none;
-  }
 }

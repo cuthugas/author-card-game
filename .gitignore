@@ -1,5 +1,6 @@
 # Local toolchains and archives
 tools/
+snapshots/*.zip
 
 # OS/editor noise
 .DS_Store

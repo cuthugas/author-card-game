@@ -111,42 +111,110 @@ export class UIScene extends Phaser.Scene {
     this.layout(w, h);
   }
 
+  getLayoutProfile(w, h) {
+    if (w < 900 || h < 540) {
+      return {
+        mode: "phone",
+        enemyPanelPos: { x: w * 0.5, y: 42 },
+        playerPanelPos: { x: 116, y: h - 46 },
+        actionPos: { x: w - 84, y: h - 76 },
+        drawPos: { x: w - 84, y: h - 112 },
+        endTurnPos: { x: w - 84, y: h - 50 },
+        playerDockSize: { w: 260, h: 82 },
+        enemyDockSize: { w: Math.min(w * 0.76, 500), h: 90 },
+        actionDockSize: { w: 98, h: 118 },
+        actionEdgeSize: { w: 106, h: 126 },
+        actionLinkSize: { w: 78, h: 18 },
+        actionLinkOffset: 50,
+        playerPanelScale: 0.62,
+        enemyPanelScale: 0.74,
+        drawScale: 0.76,
+        endTurnScale: 0.82,
+        turnInfo: { x: 18, y: 58, size: "16px" },
+        themeInfo: { x: 18, y: 80, size: "13px" },
+        themeReminder: { x: 18, y: 99, size: "11px", width: Math.max(180, w * 0.34) },
+      };
+    }
+
+    if (w < 1180) {
+      return {
+        mode: "compact",
+        enemyPanelPos: { x: w * 0.5, y: 66 },
+        playerPanelPos: { x: w * 0.2, y: h - 188 },
+        actionPos: { x: w - 146, y: h - 122 },
+        drawPos: { x: w - 146, y: h - 162 },
+        endTurnPos: { x: w - 146, y: h - 88 },
+        playerDockSize: { w: 390, h: 134 },
+        enemyDockSize: { w: 600, h: 122 },
+        actionDockSize: { w: 164, h: 188 },
+        actionEdgeSize: { w: 172, h: 196 },
+        actionLinkSize: { w: 156, h: 30 },
+        actionLinkOffset: 88,
+        playerPanelScale: 0.92,
+        enemyPanelScale: 0.96,
+        drawScale: 1.18,
+        endTurnScale: 1.28,
+        turnInfo: { x: 46, y: 90, size: "22px" },
+        themeInfo: { x: 46, y: 120, size: "18px" },
+        themeReminder: { x: 46, y: 148, size: "14px", width: 400 },
+      };
+    }
+
+    return {
+      mode: "desktop",
+      enemyPanelPos: { x: w * 0.5, y: 60 },
+      playerPanelPos: { x: w * 0.2, y: h - 178 },
+      actionPos: { x: w - 162, y: h - 118 },
+      drawPos: { x: w - 162, y: h - 156 },
+      endTurnPos: { x: w - 162, y: h - 84 },
+      playerDockSize: { w: 416, h: 140 },
+      enemyDockSize: { w: 660, h: 126 },
+      actionDockSize: { w: 178, h: 196 },
+      actionEdgeSize: { w: 186, h: 206 },
+      actionLinkSize: { w: 168, h: 30 },
+      actionLinkOffset: 94,
+      playerPanelScale: 0.96,
+      enemyPanelScale: 1,
+      drawScale: 1.1,
+      endTurnScale: 1.18,
+      turnInfo: { x: 46, y: 94, size: "24px" },
+      themeInfo: { x: 46, y: 124, size: "19px" },
+      themeReminder: { x: 46, y: 152, size: "15px", width: 470 },
+    };
+  }
+
   layout(w, h) {
-    const compact = w < 1180;
-    const enemyPanelPos = { x: w * 0.5, y: compact ? 66 : 60 };
-    const playerPanelPos = { x: w * 0.2, y: compact ? h - 188 : h - 178 };
-    const drawPos = { x: w - (compact ? 146 : 162), y: h - (compact ? 162 : 156) };
-    const endTurnPos = { x: w - (compact ? 146 : 162), y: h - (compact ? 88 : 84) };
+    const profile = this.getLayoutProfile(w, h);
 
-    this.playerPanelDock.setPosition(playerPanelPos.x, playerPanelPos.y);
-    this.playerPanelDock.setDisplaySize(compact ? 390 : 416, compact ? 134 : 140);
-    this.enemyPanelDock.setPosition(enemyPanelPos.x, enemyPanelPos.y);
-    this.enemyPanelDock.setDisplaySize(compact ? 600 : 660, compact ? 122 : 126);
+    this.playerPanelDock.setPosition(profile.playerPanelPos.x, profile.playerPanelPos.y);
+    this.playerPanelDock.setDisplaySize(profile.playerDockSize.w, profile.playerDockSize.h);
+    this.enemyPanelDock.setPosition(profile.enemyPanelPos.x, profile.enemyPanelPos.y);
+    this.enemyPanelDock.setDisplaySize(profile.enemyDockSize.w, profile.enemyDockSize.h);
 
-    this.actionDock.setPosition(w - (compact ? 146 : 162), h - (compact ? 122 : 118));
-    this.actionDock.setDisplaySize(compact ? 164 : 178, compact ? 188 : 196);
+    this.actionDock.setPosition(profile.actionPos.x, profile.actionPos.y);
+    this.actionDock.setDisplaySize(profile.actionDockSize.w, profile.actionDockSize.h);
     this.actionDockEdge.setPosition(this.actionDock.x, this.actionDock.y);
-    this.actionDockEdge.setDisplaySize(compact ? 172 : 186, compact ? 196 : 206);
-    this.actionLink.setPosition(this.actionDock.x - (compact ? 88 : 94), this.actionDock.y);
-    this.actionLink.setDisplaySize(compact ? 156 : 168, 30);
+    this.actionDockEdge.setDisplaySize(profile.actionEdgeSize.w, profile.actionEdgeSize.h);
+    this.actionLink.setPosition(this.actionDock.x - profile.actionLinkOffset, this.actionDock.y);
+    this.actionLink.setDisplaySize(profile.actionLinkSize.w, profile.actionLinkSize.h);
 
-    this.playerPanel.setPosition(playerPanelPos.x, playerPanelPos.y);
-    this.enemyPanel.setPosition(enemyPanelPos.x, enemyPanelPos.y);
-    this.playerPanel.setScale(compact ? 0.92 : 0.96);
-    this.enemyPanel.setScale(compact ? 0.96 : 1);
+    this.playerPanel.setPosition(profile.playerPanelPos.x, profile.playerPanelPos.y);
+    this.enemyPanel.setPosition(profile.enemyPanelPos.x, profile.enemyPanelPos.y);
+    this.playerPanel.setScale(profile.playerPanelScale);
+    this.enemyPanel.setScale(profile.enemyPanelScale);
 
-    this.drawBtn.setPosition(drawPos.x, drawPos.y);
-    this.endTurnBtn.setPosition(endTurnPos.x, endTurnPos.y);
-    this.drawBtn.setScale(compact ? 1.18 : 1.1);
-    this.endTurnBtn.setScale(compact ? 1.28 : 1.18);
+    this.drawBtn.setPosition(profile.drawPos.x, profile.drawPos.y);
+    this.endTurnBtn.setPosition(profile.endTurnPos.x, profile.endTurnPos.y);
+    this.drawBtn.setScale(profile.drawScale);
+    this.endTurnBtn.setScale(profile.endTurnScale);
 
-    this.turnInfo.setPosition(46, compact ? 90 : 94);
-    this.turnInfo.setFontSize(compact ? "22px" : "24px");
-    this.themeInfo.setPosition(46, compact ? 120 : 124);
-    this.themeInfo.setFontSize(compact ? "18px" : "19px");
-    this.themeReminder.setPosition(46, compact ? 148 : 152);
-    this.themeReminder.setFontSize(compact ? "14px" : "15px");
-    this.themeReminder.setWordWrapWidth(compact ? 400 : 470);
+    this.turnInfo.setPosition(profile.turnInfo.x, profile.turnInfo.y);
+    this.turnInfo.setFontSize(profile.turnInfo.size);
+    this.themeInfo.setPosition(profile.themeInfo.x, profile.themeInfo.y);
+    this.themeInfo.setFontSize(profile.themeInfo.size);
+    this.themeReminder.setPosition(profile.themeReminder.x, profile.themeReminder.y);
+    this.themeReminder.setFontSize(profile.themeReminder.size);
+    this.themeReminder.setWordWrapWidth(profile.themeReminder.width);
     this.turnBanner.setPosition(w * 0.5, h * 0.5);
     this.quizOverlay.layout(w, h);
     this.winnerOverlay.layout(w, h);

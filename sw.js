@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "author-card-prototype-v2";
+const CACHE_NAME = "author-card-prototype-v3";
 const ASSETS = [
   "./",
   "./index.html",
