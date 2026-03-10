@@ -29,8 +29,8 @@ body {
 #phaser-stage {
   position: fixed;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
+  z-index: 30;
+  pointer-events: auto;
 }
 
 .screen-fade {
@@ -60,6 +60,15 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   position: relative;
   z-index: 10;
+}
+
+body:not(.debug-dom-ui) .app {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body:not(.debug-dom-ui) #fx-layer {
+  display: none !important;
 }
 
 .topbar {

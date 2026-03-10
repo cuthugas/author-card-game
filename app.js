@@ -4,6 +4,9 @@ const STARTING_HAND = 5;
 const DEFAULT_KNOWLEDGE_TO_WIN = 10;
 const DEFAULT_QUICK_CHECK_EVERY_TURNS = 3;
 const SFX_EVENT_NAME = "acg:sfx";
+const DEBUG_DOM_UI = Boolean(window.__ACG_DEBUG_DOM_UI);
+const STATE_EVENT_NAME = "acg:state";
+const FX_EVENT_NAME = "acg:fx";
 
 const AUTHOR_PROFILES = {
   Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
@@ -114,6 +117,7 @@ const cardPool = [
 let uid = 1;
 let state;
 let prevBoardUids = { player: new Set(), ai: new Set() };
+const stateSubscribers = new Set();
 let teacherSettings = {
   knowledgeToWin: DEFAULT_KNOWLEDGE_TO_WIN,
   quickCheckEveryTurns: DEFAULT_QUICK_CHECK_EVERY_TURNS,
@@ -127,6 +131,25 @@ const sfxState = {
   reverb: null,
   reverbGain: null,
 };
+const phaserUiBridge = {
+  quizHandler: null,
+  winnerHandler: null,
+};
+
+function stateSnapshot() {
+  if (!state) return null;
+  return JSON.parse(JSON.stringify(state));
+}
+
+function notifyStateChanged() {
+  const snapshot = stateSnapshot();
+  stateSubscribers.forEach((cb) => {
+    try {
+      cb(snapshot);
+    } catch {}
+  });
+  window.dispatchEvent(new CustomEvent(STATE_EVENT_NAME, { detail: snapshot }));
+}
 
 function newPlayer(name, activeAuthor) {
   return { name, reputation: STARTING_REPUTATION, maxInspiration: 0, inspiration: 0, knowledge: 0, activeAuthor, deck: createDeck(), hand: [], board: [], discard: [], hasDrawnThisTurn: false };
@@ -396,11 +419,25 @@ function addKnowledge(ownerKey, amount, reason) {
 
 function showWinnerBanner() {
   if (!state.winner) return;
+  if (!DEBUG_DOM_UI) {
+    phaserUiBridge.winnerHandler?.({
+      winner: state.winner,
+      reason:
+        state.player.knowledge >= state.settings.knowledgeToWin || state.ai.knowledge >= state.settings.knowledgeToWin
+          ? "knowledge"
+          : "reputation",
+    });
+    return;
+  }
   refs.winnerText.textContent = state.winner === "player" ? "Victory" : "Defeat";
   refs.winnerBanner.classList.remove("hidden");
 }
 
 function hideWinnerBanner() {
+  if (!DEBUG_DOM_UI) {
+    phaserUiBridge.winnerHandler?.(null);
+    return;
+  }
   refs.winnerBanner.classList.add("hidden");
 }
 
@@ -500,13 +537,26 @@ function beginTurn(side) {
 
 function flashTarget(element) {
   if (!element) return;
+  const payload = {
+    uid: element.dataset?.cardUid || null,
+    side: element.id === "player-panel" ? "player" : element.id === "ai-panel" ? "ai" : null,
+    kind: "hit",
+  };
+  window.dispatchEvent(new CustomEvent(FX_EVENT_NAME, { detail: payload }));
   element.classList.remove("hit");
   void element.offsetWidth;
   element.classList.add("hit");
 }
 
 function spawnFloatingFx(text, targetEl, kind = "damage") {
-  if (!targetEl) return;
+  const payload = {
+    text,
+    kind,
+    uid: targetEl?.dataset?.cardUid || null,
+    side: targetEl?.id === "player-panel" ? "player" : targetEl?.id === "ai-panel" ? "ai" : null,
+  };
+  window.dispatchEvent(new CustomEvent(FX_EVENT_NAME, { detail: payload }));
+  if (!targetEl || !DEBUG_DOM_UI) return;
   const rect = targetEl.getBoundingClientRect();
   const bubble = document.createElement("span");
   bubble.className = `floating-hit ${kind}`;
@@ -524,6 +574,18 @@ function cardElementByUid(uidValue) {
 async function askQuizPlayer(quiz, title = "Quick Check") {
   state.pendingQuiz = true;
   render();
+  if (!DEBUG_DOM_UI && phaserUiBridge.quizHandler) {
+    const result = await phaserUiBridge.quizHandler({
+      title,
+      question: quiz.question,
+      options: quiz.options,
+      correctIndex: quiz.correctIndex,
+      explanation: quiz.explanation,
+    });
+    state.pendingQuiz = false;
+    render();
+    return result;
+  }
   refs.quizTitle.textContent = title;
   refs.quizQuestion.textContent = quiz.question;
   refs.quizOptions.innerHTML = "";
@@ -577,7 +639,7 @@ function applyThemeObjective(ownerKey, card) {
   const owner = state[ownerKey];
   owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + 1);
   addKnowledge(ownerKey, 1, `matched theme ${state.matchTheme.label}`);
-  spawnFloatingFx("Theme +1 Insp", panelForOwner(ownerKey), "info");
+  spawnFloatingFx("Theme Match  +1 Insp  +1 Knw", panelForOwner(ownerKey), "info");
 }
 
 function applyAuthorCharacterRules(ownerKey, card) {
@@ -611,17 +673,20 @@ async function playCard(ownerKey, handIndex) {
   if (cardCost > owner.inspiration) return;
 
   owner.inspiration -= cardCost;
+  spawnFloatingFx(`-${cardCost} Insp`, panelForOwner(ownerKey), "info");
   owner.hand.splice(handIndex, 1);
 
   if (card.type === "character") {
     owner.board.push(card);
     logEvent(`${owner.name} summons ${card.name}.`);
+    spawnFloatingFx("Summoned", panelForOwner(ownerKey), "heal");
     emitSfx("card_play_character", { side: ownerKey, card: card.name, rarity: card.rarity });
     applyAuthorCharacterRules(ownerKey, card);
   } else {
     resolveEffect(ownerKey, card);
     owner.discard.push(card);
     logEvent(`${owner.name} plays ${card.name}.`);
+    spawnFloatingFx("Effect Resolved", panelForOwner(ownerKey), "info");
     emitSfx("card_play_spell", { side: ownerKey, card: card.name, rarity: card.rarity });
     if (card.subtype === "literary_device" && card.quiz) {
       await resolveKnowledgeCheck(ownerKey, card.quiz, `Literary Device: ${card.name}`);
@@ -843,6 +908,11 @@ function updateTurnPanelStyles() {
 }
 
 function render() {
+  if (!state) return;
+  if (!DEBUG_DOM_UI) {
+    notifyStateChanged();
+    return;
+  }
   const { player, ai } = state;
   const knowledgeToWin = state.settings.knowledgeToWin;
   refs.playerRep.textContent = player.reputation;
@@ -877,6 +947,7 @@ function render() {
   renderPlayerHand();
   renderBoard("ai");
   renderBoard("player");
+  notifyStateChanged();
 }
 
 function buildCardEl(card, options = {}) {
@@ -1071,6 +1142,60 @@ async function runAiTurn() {
   beginTurn("player");
   render();
 }
+
+function selectAttacker(uidValue) {
+  if (!state || state.winner || state.pendingQuiz || state.currentPlayer !== "player") return;
+  const card = state.player.board.find((c) => c.uid === uidValue);
+  if (!card || card.exhausted) return;
+  state.selectedAttackerUid = state.selectedAttackerUid === uidValue ? null : uidValue;
+  render();
+}
+
+function playPlayerHandCard(uidValue) {
+  const index = state?.player?.hand?.findIndex((c) => c.uid === uidValue) ?? -1;
+  if (index >= 0) {
+    return playCard("player", index);
+  }
+  return Promise.resolve();
+}
+
+window.ACGCore = {
+  getState: () => stateSnapshot(),
+  subscribe(callback) {
+    if (typeof callback !== "function") return () => {};
+    stateSubscribers.add(callback);
+    callback(stateSnapshot());
+    return () => stateSubscribers.delete(callback);
+  },
+  actions: {
+    newGame: initGame,
+    draw: drawForPlayer,
+    endTurn: endPlayerTurn,
+    playHandCard: playPlayerHandCard,
+    selectAttacker,
+    attackUnit: (defenderUid) => {
+      if (!state?.selectedAttackerUid) return;
+      attackUnit("player", state.selectedAttackerUid, defenderUid);
+    },
+    attackWriter: () => {
+      if (!state?.selectedAttackerUid) return;
+      attackWriter("player", state.selectedAttackerUid);
+    },
+  },
+  constants: {
+    STATE_EVENT_NAME,
+    FX_EVENT_NAME,
+    SFX_EVENT_NAME,
+  },
+  ui: {
+    setQuizHandler(handler) {
+      phaserUiBridge.quizHandler = typeof handler === "function" ? handler : null;
+    },
+    setWinnerHandler(handler) {
+      phaserUiBridge.winnerHandler = typeof handler === "function" ? handler : null;
+    },
+  },
+};
 
 refs.drawBtn.addEventListener("click", drawForPlayer);
 refs.endTurnBtn.addEventListener("click", endPlayerTurn);

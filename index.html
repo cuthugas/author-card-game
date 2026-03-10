@@ -17,7 +17,15 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div id="phaser-stage" aria-hidden="true"></div>
+    <script>
+      window.__ACG_DEBUG_DOM_UI =
+        new URLSearchParams(window.location.search).get("debugDomUi") === "1" ||
+        localStorage.getItem("acg_debug_dom_ui") === "1";
+      document.addEventListener("DOMContentLoaded", () => {
+        document.body.classList.toggle("debug-dom-ui", Boolean(window.__ACG_DEBUG_DOM_UI));
+      });
+    </script>
+    <div id="phaser-stage" aria-hidden="false"></div>
     <div id="screen-fade" class="screen-fade"></div>
 
     <main class="app">
@@ -157,7 +165,7 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js" defer></script>
-    <script src="phaser-bg.js" defer></script>
     <script src="app.js" defer></script>
+    <script type="module" src="phaser/game.js"></script>
   </body>
 </html>
