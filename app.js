@@ -902,12 +902,20 @@ function buildCardEl(card, options = {}) {
 
 function renderPlayerHand() {
   refs.playerHandCards.innerHTML = "";
+  const total = state.player.hand.length;
+  const mid = (total - 1) / 2;
+
   state.player.hand.forEach((card, index) => {
     const cost = getCardCost(state.player, card);
     const disabled =
       state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz || cost > state.player.inspiration;
 
     const cardEl = buildCardEl(card, { disabled });
+    const offset = index - mid;
+    const fanRotate = total > 1 ? Math.max(-16, Math.min(16, offset * 4.2)) : 0;
+    const fanLift = total > 1 ? Math.round(Math.abs(offset) * 2.4) : 0;
+    cardEl.style.setProperty("--fan-rotate", `${fanRotate}deg`);
+    cardEl.style.setProperty("--fan-lift", `${fanLift}px`);
     cardEl.addEventListener("click", () => {
       if (disabled) return;
       cardEl.classList.add("leaving");

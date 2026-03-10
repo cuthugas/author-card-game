@@ -18,6 +18,8 @@ body {
   overflow: hidden;
   color: var(--text-light);
   font-family: Georgia, "Times New Roman", serif;
+  display: grid;
+  place-items: center;
   background:
     radial-gradient(circle at 15% 18%, rgba(85, 120, 183, 0.34), transparent 35%),
     radial-gradient(circle at 82% 72%, rgba(184, 127, 62, 0.3), transparent 31%),
@@ -25,14 +27,16 @@ body {
 }
 
 .app {
-  width: min(100vw, 1180px);
-  height: 100dvh;
+  width: min(100vw, calc(100dvh * 1.78));
+  height: min(100dvh, calc(100vw / 1.78));
   margin: 0 auto;
-  padding: 8px;
+  padding: 7px;
   display: grid;
   gap: 6px;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .topbar {
@@ -71,6 +75,20 @@ body {
   display: grid;
   gap: 8px;
   align-content: start;
+  position: relative;
+  overflow: hidden;
+}
+
+.arena::before {
+  content: "";
+  position: absolute;
+  inset: 8% 4%;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 232, 170, 0.12), transparent 33%),
+    linear-gradient(180deg, rgba(109, 71, 37, 0.35), rgba(55, 34, 16, 0.42));
+  box-shadow: inset 0 0 0 2px rgba(137, 98, 55, 0.45), inset 0 12px 28px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
 }
 
 .panel {
@@ -158,6 +176,16 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 6px;
+  position: relative;
+}
+
+.board::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(227, 186, 125, 0.15);
+  pointer-events: none;
 }
 
 .versus-line {
@@ -178,6 +206,9 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  background:
+    linear-gradient(180deg, rgba(17, 25, 40, 0.85), rgba(8, 13, 24, 0.86)),
+    radial-gradient(circle at 60% 40%, rgba(115, 170, 250, 0.12), transparent 35%);
 }
 
 .turn-info {
@@ -232,6 +263,17 @@ body {
 #draw-btn::before { content: "\21e3"; }
 #end-turn-btn::before { content: "\27a4"; }
 
+#end-turn-btn {
+  min-width: 122px;
+  min-height: 56px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  box-shadow: inset 0 0 18px rgba(255, 214, 127, 0.32), 0 0 0 2px rgba(213, 154, 61, 0.42), 0 8px 16px rgba(0, 0, 0, 0.35);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 242, 196, 0.72), transparent 36%),
+    linear-gradient(180deg, #f7d17e, #cf8f2f);
+}
+
 .hand-panel h3 {
   margin: 0 0 5px;
   font-size: 0.84rem;
@@ -244,6 +286,8 @@ body {
   overflow-y: hidden;
   padding-bottom: 2px;
   scrollbar-width: thin;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .card {
@@ -262,7 +306,7 @@ body {
   gap: 2px;
   font-size: 0.74rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  transition: transform 170ms ease, box-shadow 170ms ease, opacity 170ms ease;
+  transition: transform 170ms ease, box-shadow 170ms ease, opacity 170ms ease, filter 170ms ease;
 }
 
 .rarity-badge {
@@ -327,8 +371,14 @@ body {
 }
 
 .card:hover {
-  transform: translateY(-2px);
+  transform: rotate(var(--fan-rotate, 0deg)) translateY(calc(var(--fan-lift, 0px) - 7px)) scale(1.02);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.34);
+  filter: saturate(1.08);
+}
+
+.hand .card {
+  transform: rotate(var(--fan-rotate, 0deg)) translateY(var(--fan-lift, 0px));
+  transform-origin: center 130%;
 }
 
 .card .title { font-size: 0.82rem; font-weight: 800; }
@@ -460,6 +510,34 @@ body {
 .floating-hit.info { background: rgba(56, 93, 168, 0.92); }
 .hidden { display: none; }
 
+.rotate-warning {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 16, 0.78);
+  backdrop-filter: blur(4px);
+  z-index: 60;
+  display: none;
+  place-items: center;
+}
+
+.rotate-card {
+  width: min(86vw, 340px);
+  border-radius: 14px;
+  border: 2px solid rgba(225, 191, 136, 0.5);
+  background: linear-gradient(180deg, #f8f1dd, #e6d3aa);
+  color: #2a1d0f;
+  text-align: center;
+  padding: 16px;
+}
+
+.rotate-card h2 {
+  margin: 0 0 6px;
+}
+
+.rotate-card p {
+  margin: 0;
+}
+
 @keyframes card-enter {
   from { opacity: 0; transform: translateY(12px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -497,4 +575,15 @@ body {
   .topbar-actions { width: 100%; overflow-x: auto; padding-bottom: 2px; }
   .teacher-controls { grid-template-columns: 1fr; }
   .card { flex-basis: 118px; min-height: 86px; }
+}
+
+@media (orientation: portrait) {
+  .rotate-warning {
+    display: grid;
+  }
+
+  .app {
+    filter: blur(2px) saturate(0.8);
+    pointer-events: none;
+  }
 }
