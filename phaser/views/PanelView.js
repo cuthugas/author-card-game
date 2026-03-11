@@ -5,6 +5,7 @@ export class PanelView extends Phaser.GameObjects.Container {
     this.side = side;
     this.targetable = false;
     this.targetPulseTween = null;
+    this.layoutMode = "default";
 
     this.shadow = scene.add.rectangle(0, 8, 398, 108, 0x090708, 0.34).setOrigin(0.5);
     this.bg = scene.add.image(0, 0, "panel-base").setDisplaySize(396, 112).setTint(0x3d2f24, 0x2d241d, 0x1f1915, 0x33281f);
@@ -76,12 +77,18 @@ export class PanelView extends Phaser.GameObjects.Container {
     this.inputTarget = this.bg;
     this.inputTarget.setInteractive({ useHandCursor: true });
     scene.add.existing(this);
+    this.setLayout("default");
   }
 
   update(data, knowledgeToWin, isActiveTurn) {
     this.title.setText(`${data.name} - ${data.author}`);
-    this.primary.setText(`REP ${data.reputation}   INSP ${data.inspiration}/${data.maxInspiration}`);
-    this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin}   DECK ${data.deckCount}   HAND ${data.handCount}`);
+    if (this.layoutMode === "phone") {
+      this.primary.setText(`REP ${data.reputation} | IN ${data.inspiration}/${data.maxInspiration}`);
+      this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin} | D ${data.deckCount} H ${data.handCount}`);
+    } else {
+      this.primary.setText(`REP ${data.reputation}   INSP ${data.inspiration}/${data.maxInspiration}`);
+      this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin}   DECK ${data.deckCount}   HAND ${data.handCount}`);
+    }
     this.scene.tweens.add({
       targets: this.turnGlow,
       alpha: isActiveTurn ? 0.54 : 0.12,
@@ -96,6 +103,29 @@ export class PanelView extends Phaser.GameObjects.Container {
       duration: 180,
       ease: "Sine.Out",
     });
+  }
+
+  setLayout(mode = "default") {
+    this.layoutMode = mode;
+    const compact = mode === "phone";
+
+    this.shadow.setSize(compact ? 284 : 398, compact ? 74 : 108).setPosition(0, compact ? 6 : 8);
+    this.bg.setDisplaySize(compact ? 280 : 396, compact ? 78 : 112);
+    this.edge.setDisplaySize(compact ? 286 : 402, compact ? 84 : 118);
+    this.link
+      .setPosition(0, this.side === "player" ? (compact ? -44 : -66) : compact ? 44 : 66)
+      .setDisplaySize(compact ? 176 : 260, compact ? 22 : 34);
+    this.topShine.setSize(compact ? 220 : 332, compact ? 12 : 18).setPosition(0, compact ? -28 : -42);
+    this.title.setPosition(compact ? -124 : -176, compact ? -24 : -37).setFontSize(compact ? "14px" : "22px");
+    this.primary.setPosition(compact ? -124 : -176, compact ? -1 : -4).setFontSize(compact ? "12px" : "19px");
+    this.secondary.setPosition(compact ? -124 : -176, compact ? 19 : 26).setFontSize(compact ? "10px" : "17px");
+    this.turnGlow.setPosition(compact ? 100 : 146, compact ? -1 : -2).setDisplaySize(compact ? 102 : 146, compact ? 62 : 92);
+    this.orb.setPosition(compact ? 118 : 168, compact ? -1 : -1).setRadius(compact ? 7 : 10);
+    this.targetRing.setDisplaySize(compact ? 304 : 426, compact ? 96 : 136);
+    this.targetHint
+      .setPosition(0, this.side === "ai" ? (compact ? 28 : 44) : compact ? -28 : -44)
+      .setFontSize(compact ? "11px" : "15px");
+    this.setSize(compact ? 290 : 410, compact ? 84 : 120);
   }
 
   flashPrimary(color = "#fff0ca") {

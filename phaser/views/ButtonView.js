@@ -43,6 +43,7 @@ export class ButtonView extends Phaser.GameObjects.Container {
     });
 
     scene.add.existing(this);
+    this.setLayout("default");
   }
 
   setLabel(label) {
@@ -62,5 +63,15 @@ export class ButtonView extends Phaser.GameObjects.Container {
       this.glow.setAlpha(0.12);
       this.shadow.setAlpha(0.2);
     }
+  }
+
+  setLayout(mode = "default") {
+    const compact = mode === "phone";
+    this.shadow.setSize(compact ? 92 : 150, compact ? 28 : 44).setPosition(0, compact ? 5 : 8);
+    this.bevel.setSize(compact ? 78 : 128, compact ? 8 : 14).setPosition(0, compact ? -10 : -15);
+    this.bg.setDisplaySize(compact ? 100 : 164, compact ? 38 : 58);
+    this.glow.setDisplaySize(compact ? 114 : 184, compact ? 48 : 70);
+    this.text.setFontSize(compact ? "14px" : "24px");
+    this.setSize(compact ? 100 : 164, compact ? 38 : 58);
   }
 }

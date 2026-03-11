@@ -115,24 +115,29 @@ export class UIScene extends Phaser.Scene {
     if (w < 900 || h < 540) {
       return {
         mode: "phone",
-        enemyPanelPos: { x: w * 0.5, y: 42 },
-        playerPanelPos: { x: 116, y: h - 46 },
-        actionPos: { x: w - 84, y: h - 76 },
-        drawPos: { x: w - 84, y: h - 112 },
-        endTurnPos: { x: w - 84, y: h - 50 },
-        playerDockSize: { w: 260, h: 82 },
-        enemyDockSize: { w: Math.min(w * 0.76, 500), h: 90 },
-        actionDockSize: { w: 98, h: 118 },
-        actionEdgeSize: { w: 106, h: 126 },
-        actionLinkSize: { w: 78, h: 18 },
-        actionLinkOffset: 50,
-        playerPanelScale: 0.62,
-        enemyPanelScale: 0.74,
-        drawScale: 0.76,
-        endTurnScale: 0.82,
-        turnInfo: { x: 18, y: 58, size: "16px" },
-        themeInfo: { x: 18, y: 80, size: "13px" },
-        themeReminder: { x: 18, y: 99, size: "11px", width: Math.max(180, w * 0.34) },
+        enemyPanelPos: { x: w * 0.52, y: 32 },
+        playerPanelPos: { x: 98, y: h - 28 },
+        actionPos: { x: w - 58, y: h - 52 },
+        drawPos: { x: w - 58, y: h - 84 },
+        endTurnPos: { x: w - 58, y: h - 34 },
+        playerDockSize: { w: 286, h: 84 },
+        enemyDockSize: { w: 286, h: 84 },
+        actionDockSize: { w: 0, h: 0 },
+        actionEdgeSize: { w: 0, h: 0 },
+        actionLinkSize: { w: 0, h: 0 },
+        actionLinkOffset: 0,
+        playerPanelScale: 0.92,
+        enemyPanelScale: 0.92,
+        drawScale: 1,
+        endTurnScale: 1,
+        panelLayout: "phone",
+        buttonLayout: "phone",
+        drawLabel: "DRAW",
+        endTurnLabel: "END",
+        showActionDock: false,
+        turnInfo: { x: 14, y: 18, size: "12px" },
+        themeInfo: { x: 14, y: 34, size: "11px" },
+        themeReminder: { x: 14, y: 48, size: "10px", width: Math.max(150, w * 0.26), visible: false },
       };
     }
 
@@ -154,6 +159,11 @@ export class UIScene extends Phaser.Scene {
         enemyPanelScale: 0.96,
         drawScale: 1.18,
         endTurnScale: 1.28,
+        panelLayout: "default",
+        buttonLayout: "default",
+        drawLabel: "DRAW",
+        endTurnLabel: "END TURN",
+        showActionDock: true,
         turnInfo: { x: 46, y: 90, size: "22px" },
         themeInfo: { x: 46, y: 120, size: "18px" },
         themeReminder: { x: 46, y: 148, size: "14px", width: 400 },
@@ -177,6 +187,11 @@ export class UIScene extends Phaser.Scene {
       enemyPanelScale: 1,
       drawScale: 1.1,
       endTurnScale: 1.18,
+      panelLayout: "default",
+      buttonLayout: "default",
+      drawLabel: "DRAW",
+      endTurnLabel: "END TURN",
+      showActionDock: true,
       turnInfo: { x: 46, y: 94, size: "24px" },
       themeInfo: { x: 46, y: 124, size: "19px" },
       themeReminder: { x: 46, y: 152, size: "15px", width: 470 },
@@ -186,10 +201,19 @@ export class UIScene extends Phaser.Scene {
   layout(w, h) {
     const profile = this.getLayoutProfile(w, h);
 
+    this.playerPanel.setLayout(profile.panelLayout);
+    this.enemyPanel.setLayout(profile.panelLayout);
+    this.drawBtn.setLayout(profile.buttonLayout);
+    this.endTurnBtn.setLayout(profile.buttonLayout);
+    this.drawBtn.setLabel(profile.drawLabel);
+    this.endTurnBtn.setLabel(profile.endTurnLabel);
+
     this.playerPanelDock.setPosition(profile.playerPanelPos.x, profile.playerPanelPos.y);
     this.playerPanelDock.setDisplaySize(profile.playerDockSize.w, profile.playerDockSize.h);
     this.enemyPanelDock.setPosition(profile.enemyPanelPos.x, profile.enemyPanelPos.y);
     this.enemyPanelDock.setDisplaySize(profile.enemyDockSize.w, profile.enemyDockSize.h);
+    this.playerPanelDock.setAlpha(profile.mode === "phone" ? 0.14 : 0.28);
+    this.enemyPanelDock.setAlpha(profile.mode === "phone" ? 0.14 : 0.24);
 
     this.actionDock.setPosition(profile.actionPos.x, profile.actionPos.y);
     this.actionDock.setDisplaySize(profile.actionDockSize.w, profile.actionDockSize.h);
@@ -197,6 +221,9 @@ export class UIScene extends Phaser.Scene {
     this.actionDockEdge.setDisplaySize(profile.actionEdgeSize.w, profile.actionEdgeSize.h);
     this.actionLink.setPosition(this.actionDock.x - profile.actionLinkOffset, this.actionDock.y);
     this.actionLink.setDisplaySize(profile.actionLinkSize.w, profile.actionLinkSize.h);
+    this.actionDock.setAlpha(profile.showActionDock ? 0.72 : 0);
+    this.actionDockEdge.setAlpha(profile.showActionDock ? 0.5 : 0);
+    this.actionLink.setAlpha(profile.showActionDock ? 0.45 : 0);
 
     this.playerPanel.setPosition(profile.playerPanelPos.x, profile.playerPanelPos.y);
     this.enemyPanel.setPosition(profile.enemyPanelPos.x, profile.enemyPanelPos.y);
@@ -215,6 +242,7 @@ export class UIScene extends Phaser.Scene {
     this.themeReminder.setPosition(profile.themeReminder.x, profile.themeReminder.y);
     this.themeReminder.setFontSize(profile.themeReminder.size);
     this.themeReminder.setWordWrapWidth(profile.themeReminder.width);
+    this.themeReminder.setVisible(profile.themeReminder.visible !== false);
     this.turnBanner.setPosition(w * 0.5, h * 0.5);
     this.quizOverlay.layout(w, h);
     this.winnerOverlay.layout(w, h);
@@ -239,11 +267,18 @@ export class UIScene extends Phaser.Scene {
     this.enemyPanel.setTargetable(this.canDirectAttack);
     this.enemyPanelDock.input.enabled = this.canDirectAttack;
 
-    this.turnInfo.setText(`Turn ${this.current.turn}  -  ${this.current.currentPlayer === "player" ? "Your Main Phase" : "Enemy Action"}`);
-    this.themeInfo.setText(this.current.themeLabel || "Theme");
-    this.themeReminder.setText(
-      `${this.current.themeDescription || ""} ${this.current.themeRewardText || ""}`.trim()
-    );
+    const phoneLayout = this.scale.width < 900 || this.scale.height < 540;
+    if (phoneLayout) {
+      this.turnInfo.setText(`T${this.current.turn}  ${this.current.currentPlayer === "player" ? "YOU" : "AI"}`);
+      this.themeInfo.setText(this.current.themeLabel || "Theme");
+      this.themeReminder.setText("");
+    } else {
+      this.turnInfo.setText(`Turn ${this.current.turn}  -  ${this.current.currentPlayer === "player" ? "Your Main Phase" : "Enemy Action"}`);
+      this.themeInfo.setText(this.current.themeLabel || "Theme");
+      this.themeReminder.setText(
+        `${this.current.themeDescription || ""} ${this.current.themeRewardText || ""}`.trim()
+      );
+    }
 
     const disableActions = Boolean(this.current.winner || this.current.pendingQuiz || this.current.currentPlayer !== "player");
     this.drawBtn.setEnabled(!disableActions && !this.current.player.hasDrawnThisTurn);
