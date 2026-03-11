@@ -5,6 +5,12 @@ import { MatchScene } from "./scenes/MatchScene.js";
 import { UIScene } from "./scenes/UIScene.js";
 import { FXScene } from "./scenes/FXScene.js";
 
+function getRenderResolution() {
+  const dpr = window.devicePixelRatio || 1;
+  const isPhoneLike = window.matchMedia?.("(pointer: coarse)").matches || Math.min(window.screen.width, window.screen.height) < 900;
+  return isPhoneLike ? Math.min(dpr, 2) : 1;
+}
+
 function bootPhaser() {
   const host = document.getElementById("phaser-stage");
   if (!host || !window.Phaser) return;
@@ -14,6 +20,8 @@ function bootPhaser() {
     parent: "phaser-stage",
     width: DEFAULT_VIEWPORT.width,
     height: DEFAULT_VIEWPORT.height,
+    resolution: getRenderResolution(),
+    autoRound: false,
     transparent: true,
     backgroundColor: "#000000",
     scale: {
