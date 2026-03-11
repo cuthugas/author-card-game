@@ -116,21 +116,22 @@ export class UIScene extends Phaser.Scene {
       return {
         mode: "phone",
         enemyPanelPos: { x: w * 0.52, y: 32 },
-        playerPanelPos: { x: 98, y: h - 28 },
+        playerPanelPos: { x: 82, y: h - 34 },
         actionPos: { x: w - 58, y: h - 52 },
         drawPos: { x: w - 58, y: h - 84 },
         endTurnPos: { x: w - 58, y: h - 34 },
-        playerDockSize: { w: 286, h: 84 },
+        playerDockSize: { w: 0, h: 0 },
         enemyDockSize: { w: 286, h: 84 },
         actionDockSize: { w: 0, h: 0 },
         actionEdgeSize: { w: 0, h: 0 },
         actionLinkSize: { w: 0, h: 0 },
         actionLinkOffset: 0,
-        playerPanelScale: 0.92,
+        playerPanelScale: 1,
         enemyPanelScale: 0.92,
+        playerPanelLayout: "phone-player",
+        enemyPanelLayout: "phone",
         drawScale: 1,
         endTurnScale: 1,
-        panelLayout: "phone",
         buttonLayout: "phone",
         drawLabel: "DRAW",
         endTurnLabel: "END",
@@ -157,9 +158,10 @@ export class UIScene extends Phaser.Scene {
         actionLinkOffset: 88,
         playerPanelScale: 0.92,
         enemyPanelScale: 0.96,
+        playerPanelLayout: "default",
+        enemyPanelLayout: "default",
         drawScale: 1.18,
         endTurnScale: 1.28,
-        panelLayout: "default",
         buttonLayout: "default",
         drawLabel: "DRAW",
         endTurnLabel: "END TURN",
@@ -185,9 +187,10 @@ export class UIScene extends Phaser.Scene {
       actionLinkOffset: 94,
       playerPanelScale: 0.96,
       enemyPanelScale: 1,
+      playerPanelLayout: "default",
+      enemyPanelLayout: "default",
       drawScale: 1.1,
       endTurnScale: 1.18,
-      panelLayout: "default",
       buttonLayout: "default",
       drawLabel: "DRAW",
       endTurnLabel: "END TURN",
@@ -201,8 +204,8 @@ export class UIScene extends Phaser.Scene {
   layout(w, h) {
     const profile = this.getLayoutProfile(w, h);
 
-    this.playerPanel.setLayout(profile.panelLayout);
-    this.enemyPanel.setLayout(profile.panelLayout);
+    this.playerPanel.setLayout(profile.playerPanelLayout);
+    this.enemyPanel.setLayout(profile.enemyPanelLayout);
     this.drawBtn.setLayout(profile.buttonLayout);
     this.endTurnBtn.setLayout(profile.buttonLayout);
     this.drawBtn.setLabel(profile.drawLabel);

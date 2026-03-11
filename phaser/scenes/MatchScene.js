@@ -72,6 +72,7 @@ export class MatchScene extends Phaser.Scene {
         handAngle: 8,
         handAngleStep: 2.8,
         handLiftStep: 1.1,
+        handMaxSpread: 100,
         slotInset: Math.max(78, w * 0.13),
         slotBend: 8,
         slotWidth: 96,
@@ -182,8 +183,10 @@ export class MatchScene extends Phaser.Scene {
 
     this.playerDeckPos = { x: profile.slotInset, y: isPhone ? h * 0.72 : h * 0.78 };
     this.enemyDeckPos = { x: w - profile.slotInset, y: isPhone ? h * 0.14 : h * 0.13 };
-    this.playerDeck = this.add.image(this.playerDeckPos.x, this.playerDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAlpha(0.9);
-    this.enemyDeck = this.add.image(this.enemyDeckPos.x, this.enemyDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAngle(180).setAlpha(0.86);
+    this.playerDeck = this.add.image(this.playerDeckPos.x, this.playerDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAlpha(isPhone ? 0 : 0.9);
+    this.enemyDeck = this.add.image(this.enemyDeckPos.x, this.enemyDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAngle(180).setAlpha(isPhone ? 0 : 0.86);
+    this.playerDeck.setVisible(!isPhone);
+    this.enemyDeck.setVisible(!isPhone);
 
     this.bgLayer.add([
       bg,
@@ -385,6 +388,7 @@ export class MatchScene extends Phaser.Scene {
       maxAngle: profile.handAngle,
       angleStep: profile.handAngleStep,
       liftStep: profile.handLiftStep,
+      maxSpread: profile.handMaxSpread,
     });
     cards.forEach((card, index) => {
       const fan = fanTargets[index];

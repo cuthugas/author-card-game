@@ -81,11 +81,17 @@ export class PanelView extends Phaser.GameObjects.Container {
   }
 
   update(data, knowledgeToWin, isActiveTurn) {
-    this.title.setText(`${data.name} - ${data.author}`);
+    if (this.layoutMode === "phone-player") {
+      this.title.setText("YOU");
+      this.primary.setText(`R ${data.reputation}  I ${data.inspiration}/${data.maxInspiration}`);
+      this.secondary.setText(`K ${data.knowledge}/${knowledgeToWin}  D ${data.deckCount} H ${data.handCount}`);
+    } else {
+      this.title.setText(`${data.name} - ${data.author}`);
+    }
     if (this.layoutMode === "phone") {
       this.primary.setText(`REP ${data.reputation} | IN ${data.inspiration}/${data.maxInspiration}`);
       this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin} | D ${data.deckCount} H ${data.handCount}`);
-    } else {
+    } else if (this.layoutMode !== "phone-player") {
       this.primary.setText(`REP ${data.reputation}   INSP ${data.inspiration}/${data.maxInspiration}`);
       this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin}   DECK ${data.deckCount}   HAND ${data.handCount}`);
     }
@@ -108,24 +114,26 @@ export class PanelView extends Phaser.GameObjects.Container {
   setLayout(mode = "default") {
     this.layoutMode = mode;
     const compact = mode === "phone";
+    const playerCompact = mode === "phone-player";
 
-    this.shadow.setSize(compact ? 284 : 398, compact ? 74 : 108).setPosition(0, compact ? 6 : 8);
-    this.bg.setDisplaySize(compact ? 280 : 396, compact ? 78 : 112);
-    this.edge.setDisplaySize(compact ? 286 : 402, compact ? 84 : 118);
+    this.shadow.setSize(playerCompact ? 194 : compact ? 284 : 398, playerCompact ? 56 : compact ? 74 : 108).setPosition(0, playerCompact ? 4 : compact ? 6 : 8);
+    this.bg.setDisplaySize(playerCompact ? 190 : compact ? 280 : 396, playerCompact ? 58 : compact ? 78 : 112);
+    this.edge.setDisplaySize(playerCompact ? 196 : compact ? 286 : 402, playerCompact ? 64 : compact ? 84 : 118);
     this.link
-      .setPosition(0, this.side === "player" ? (compact ? -44 : -66) : compact ? 44 : 66)
-      .setDisplaySize(compact ? 176 : 260, compact ? 22 : 34);
-    this.topShine.setSize(compact ? 220 : 332, compact ? 12 : 18).setPosition(0, compact ? -28 : -42);
-    this.title.setPosition(compact ? -124 : -176, compact ? -24 : -37).setFontSize(compact ? "14px" : "22px");
-    this.primary.setPosition(compact ? -124 : -176, compact ? -1 : -4).setFontSize(compact ? "12px" : "19px");
-    this.secondary.setPosition(compact ? -124 : -176, compact ? 19 : 26).setFontSize(compact ? "10px" : "17px");
-    this.turnGlow.setPosition(compact ? 100 : 146, compact ? -1 : -2).setDisplaySize(compact ? 102 : 146, compact ? 62 : 92);
-    this.orb.setPosition(compact ? 118 : 168, compact ? -1 : -1).setRadius(compact ? 7 : 10);
-    this.targetRing.setDisplaySize(compact ? 304 : 426, compact ? 96 : 136);
+      .setPosition(0, this.side === "player" ? (playerCompact ? -30 : compact ? -44 : -66) : playerCompact ? 30 : compact ? 44 : 66)
+      .setDisplaySize(playerCompact ? 118 : compact ? 176 : 260, playerCompact ? 14 : compact ? 22 : 34)
+      .setAlpha(playerCompact ? 0 : 0.52);
+    this.topShine.setSize(playerCompact ? 146 : compact ? 220 : 332, playerCompact ? 8 : compact ? 12 : 18).setPosition(0, playerCompact ? -21 : compact ? -28 : -42);
+    this.title.setPosition(playerCompact ? -78 : compact ? -124 : -176, playerCompact ? -15 : compact ? -24 : -37).setFontSize(playerCompact ? "11px" : compact ? "14px" : "22px");
+    this.primary.setPosition(playerCompact ? -78 : compact ? -124 : -176, playerCompact ? 1 : compact ? -1 : -4).setFontSize(playerCompact ? "10px" : compact ? "12px" : "19px");
+    this.secondary.setPosition(playerCompact ? -78 : compact ? -124 : -176, playerCompact ? 16 : compact ? 19 : 26).setFontSize(playerCompact ? "9px" : compact ? "10px" : "17px");
+    this.turnGlow.setPosition(playerCompact ? 68 : compact ? 100 : 146, playerCompact ? 0 : compact ? -1 : -2).setDisplaySize(playerCompact ? 52 : compact ? 102 : 146, playerCompact ? 34 : compact ? 62 : 92);
+    this.orb.setPosition(playerCompact ? 82 : compact ? 118 : 168,  playerCompact ? 0 : compact ? -1 : -1).setRadius(playerCompact ? 5 : compact ? 7 : 10);
+    this.targetRing.setDisplaySize(playerCompact ? 212 : compact ? 304 : 426, playerCompact ? 76 : compact ? 96 : 136);
     this.targetHint
-      .setPosition(0, this.side === "ai" ? (compact ? 28 : 44) : compact ? -28 : -44)
-      .setFontSize(compact ? "11px" : "15px");
-    this.setSize(compact ? 290 : 410, compact ? 84 : 120);
+      .setPosition(0, this.side === "ai" ? (playerCompact ? 22 : compact ? 28 : 44) : playerCompact ? -22 : compact ? -28 : -44)
+      .setFontSize(playerCompact ? "9px" : compact ? "11px" : "15px");
+    this.setSize(playerCompact ? 200 : compact ? 290 : 410, playerCompact ? 62 : compact ? 84 : 120);
   }
 
   flashPrimary(color = "#fff0ca") {
