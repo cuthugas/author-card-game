@@ -65,8 +65,7 @@ body {
 }
 
 body:not(.debug-dom-ui) .app {
-  opacity: 0;
-  pointer-events: none;
+  display: none !important;
 }
 
 body:not(.debug-dom-ui) #fx-layer {
