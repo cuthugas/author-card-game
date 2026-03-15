@@ -306,6 +306,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   moveTo(view, target, opts = {}) {
+    if (opts.movingDepth !== undefined) view.setDepth(opts.movingDepth);
     this.tweens.add({
       targets: view,
       x: target.x,
@@ -316,11 +317,11 @@ export class MatchScene extends Phaser.Scene {
       duration: opts.duration ?? 230,
       ease: opts.ease ?? "Quad.Out",
       onComplete: () => {
+        if (target.depth !== undefined) view.setDepth(target.depth);
         view.setHomeTransform();
         opts.onComplete?.();
       },
     });
-    if (target.depth !== undefined) view.setDepth(target.depth);
   }
 
   getSlotTargets(side, count) {
@@ -373,15 +374,24 @@ export class MatchScene extends Phaser.Scene {
           },
         });
 
-        const origin =
-          prevZone === "hand" && fromPos
-            ? fromPos
-            : fromPos || (side === "ai" ? this.enemyDeckPos : this.playerDeckPos);
+        let origin;
+        if (prevZone === "hand" && fromPos) {
+          origin = fromPos;
+        } else if (fromPos) {
+          origin = fromPos;
+        } else if (side === "ai" && profile.mode === "phone") {
+          origin = {
+            x: target.x,
+            y: Math.min(target.y - 56, this.scale.height * Math.max(0.18, profile.enemyLaneRatio - 0.1)),
+          };
+        } else {
+          origin = side === "ai" ? this.enemyDeckPos : this.playerDeckPos;
+        }
 
         view.setPosition(origin.x, origin.y);
         view.setScale(prevZone === "hand" ? this.getProfile().handScale : 0.58);
         view.setAngle(prevZone === "hand" ? 0 : side === "ai" ? -8 : 8);
-        view.setAlpha(0.8);
+        view.setAlpha(side === "ai" && profile.mode === "phone" ? 0.92 : 0.8);
         this.boardLayer.add(view);
         map.set(card.uid, view);
       }
@@ -394,7 +404,8 @@ export class MatchScene extends Phaser.Scene {
 
       this.moveTo(view, targetTransform, {
         duration: prevZone === "hand" ? 270 : 210,
-        ease: prevZone === "hand" ? "Cubic.Out" : "Quad.Out",
+        ease: side === "ai" && profile.mode === "phone" && !fromPos ? "Cubic.Out" : prevZone === "hand" ? "Cubic.Out" : "Quad.Out",
+        movingDepth: side === "ai" && profile.mode === "phone" ? 118 + index : undefined,
         onComplete: () => this.recordPosition(card.uid, view),
       });
     });
