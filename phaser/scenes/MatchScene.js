@@ -72,6 +72,10 @@ export class MatchScene extends Phaser.Scene {
         cardLayout: "phone",
         handScale: 0.7,
         boardScale: 0.52,
+        boardCenterRatio: 0.47,
+        enemyLaneRatio: 0.37,
+        playerLaneRatio: 0.58,
+        handShelfRatio: 0.78,
         handBaseY: h - 52,
         handSidePadding: Math.max(118, w * 0.22),
         handAngle: 8,
@@ -90,6 +94,10 @@ export class MatchScene extends Phaser.Scene {
         cardLayout: "default",
         handScale: 0.98,
         boardScale: 0.68,
+        boardCenterRatio: 0.47,
+        enemyLaneRatio: 0.315,
+        playerLaneRatio: 0.575,
+        handShelfRatio: 0.87,
         handBaseY: this.scale.height - 96,
         handSidePadding: Math.max(96, w * 0.16),
         handAngle: 14,
@@ -107,6 +115,10 @@ export class MatchScene extends Phaser.Scene {
         cardLayout: "default",
         handScale: 0.94,
         boardScale: 0.7,
+        boardCenterRatio: 0.47,
+        enemyLaneRatio: 0.315,
+        playerLaneRatio: 0.575,
+        handShelfRatio: 0.87,
         handBaseY: this.scale.height - 98,
         handSidePadding: Math.max(110, w * 0.15),
         handAngle: 16,
@@ -123,6 +135,10 @@ export class MatchScene extends Phaser.Scene {
       cardLayout: "default",
       handScale: 0.9,
       boardScale: 0.72,
+      boardCenterRatio: 0.47,
+      enemyLaneRatio: 0.315,
+      playerLaneRatio: 0.575,
+      handShelfRatio: 0.87,
       handBaseY: this.scale.height - 102,
       handSidePadding: Math.max(124, w * 0.14),
       handAngle: 18,
@@ -143,10 +159,10 @@ export class MatchScene extends Phaser.Scene {
     const h = this.scale.height;
     const profile = this.getProfile();
     const isPhone = profile.mode === "phone";
-    const boardCenterY = isPhone ? h * 0.37 : h * 0.47;
-    const enemyLaneY = isPhone ? h * 0.22 : h * 0.315;
-    const playerLaneY = isPhone ? h * 0.42 : h * 0.575;
-    const handShelfY = isPhone ? h * 0.74 : h * 0.87;
+    const boardCenterY = h * profile.boardCenterRatio;
+    const enemyLaneY = h * profile.enemyLaneRatio;
+    const playerLaneY = h * profile.playerLaneRatio;
+    const handShelfY = h * profile.handShelfRatio;
     const deckWidth = isPhone ? 64 : 84;
     const deckHeight = isPhone ? 86 : 112;
 
@@ -239,8 +255,8 @@ export class MatchScene extends Phaser.Scene {
       const x = profile.slotInset + (w - profile.slotInset * 2) * t;
       const bend = Math.cos((t - 0.5) * Math.PI) * profile.slotBend;
 
-      const enemyY = h * (profile.mode === "phone" ? 0.22 : 0.315) - bend * 0.45;
-      const playerY = h * (profile.mode === "phone" ? 0.42 : 0.575) + bend * 0.45;
+      const enemyY = h * profile.enemyLaneRatio - bend * 0.45;
+      const playerY = h * profile.playerLaneRatio + bend * 0.45;
 
       this.slotAnchors.ai.push({ x, y: enemyY });
       this.slotAnchors.player.push({ x, y: playerY });
@@ -349,29 +365,6 @@ export class MatchScene extends Phaser.Scene {
           layoutMode: profile.cardLayout,
           onClick: () => {
             if (this.viewState.winner || this.viewState.pendingQuiz || this.viewState.currentPlayer !== "player") return;
-            if (this.isPhoneLayout()) {
-              if (!isEnemy) {
-                if (card.exhausted) {
-                  this.openPhoneDetail(card);
-                  return;
-                }
-                const actionLabel = this.viewState.selectedAttackerUid === card.uid ? "DESELECT" : "SELECT";
-                this.openPhoneDetail(card, {
-                  actionLabel,
-                  onAction: () => this.adapter.actions.selectAttacker?.(card.uid),
-                });
-                return;
-              }
-              if (this.viewState.selectedAttackerUid) {
-                this.openPhoneDetail(card, {
-                  actionLabel: "ATTACK",
-                  onAction: () => this.adapter.actions.attackUnit?.(card.uid),
-                });
-              } else {
-                this.openPhoneDetail(card);
-              }
-              return;
-            }
             if (!isEnemy) {
               this.adapter.actions.selectAttacker?.(card.uid);
               return;
@@ -449,18 +442,7 @@ export class MatchScene extends Phaser.Scene {
           interactive: true,
           disableHover: false,
           layoutMode: profile.cardLayout,
-          onClick: () => {
-            if (!this.isPhoneLayout()) {
-              this.adapter.actions.playHandCard?.(card.uid);
-              return;
-            }
-            this.openPhoneDetail(card, canPlay
-              ? {
-                  actionLabel: "PLAY",
-                  onAction: () => this.adapter.actions.playHandCard?.(card.uid),
-                }
-              : {});
-          },
+          onClick: () => this.adapter.actions.playHandCard?.(card.uid),
         });
 
         const origin = fromPos || this.playerDeckPos;
@@ -475,7 +457,7 @@ export class MatchScene extends Phaser.Scene {
       view.setLayout(profile.cardLayout);
       view.updateData(card);
       view.alpha = canPlay ? 1 : 0.56;
-      view.setInputEnabled(this.isPhoneLayout() ? true : canPlay);
+      view.setInputEnabled(canPlay);
       view.setThemeMatch(Boolean(card.matchesTheme));
       this.handLayer.bringToTop(view);
 
