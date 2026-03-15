@@ -24,7 +24,15 @@ export class StateAdapter {
 
   mapState(state) {
     if (!state) return null;
-    const mapCard = (card) => ({
+    const getMappedCost = (owner, card) => {
+      if (!card) return 0;
+      if (card.type === "character" && card.author === owner.activeAuthor) {
+        return Math.max(0, (card.cost ?? 0) - 1);
+      }
+      return card.cost ?? 0;
+    };
+
+    const mapCard = (owner) => (card) => ({
       uid: card.uid,
       key: card.key,
       name: card.name,
@@ -32,6 +40,7 @@ export class StateAdapter {
       subtype: card.subtype || null,
       author: card.author,
       cost: card.cost,
+      playCost: getMappedCost(owner, card),
       attack: card.attack || 0,
       defense: card.defense || 0,
       memorability: card.currentMemorability || card.memorability || 0,
@@ -66,8 +75,8 @@ export class StateAdapter {
         deckCount: state.player.deck.length,
         handCount: state.player.hand.length,
         hasDrawnThisTurn: Boolean(state.player.hasDrawnThisTurn),
-        hand: state.player.hand.map(mapCard),
-        board: state.player.board.map(mapCard),
+        hand: state.player.hand.map(mapCard(state.player)),
+        board: state.player.board.map(mapCard(state.player)),
       },
       ai: {
         side: "ai",
@@ -79,8 +88,8 @@ export class StateAdapter {
         knowledge: state.ai.knowledge,
         deckCount: state.ai.deck.length,
         handCount: state.ai.hand.length,
-        hand: state.ai.hand.map(mapCard),
-        board: state.ai.board.map(mapCard),
+        hand: state.ai.hand.map(mapCard(state.ai)),
+        board: state.ai.board.map(mapCard(state.ai)),
       },
     };
   }

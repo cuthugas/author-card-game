@@ -270,7 +270,7 @@ export class CardView extends Phaser.GameObjects.Container {
     if (card.functionText) detailLines.push(`Function: ${card.functionText}`);
     this.tooltipText.setText(detailLines.join("\n"));
 
-    this.cost.setText(`${card.cost ?? 0}`);
+    this.cost.setText(`${card.playCost ?? card.cost ?? 0}`);
 
     const isCharacter = card.type === "character";
     this.iconAtk.setVisible(isCharacter);

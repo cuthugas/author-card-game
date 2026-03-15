@@ -432,7 +432,11 @@ export class MatchScene extends Phaser.Scene {
     });
     cards.forEach((card, index) => {
       const fan = fanTargets[index];
-      const canPlay = !this.viewState.winner && !this.viewState.pendingQuiz && this.viewState.currentPlayer === "player" && card.cost <= this.viewState.player.inspiration;
+      const canPlay =
+        !this.viewState.winner &&
+        !this.viewState.pendingQuiz &&
+        this.viewState.currentPlayer === "player" &&
+        (card.playCost ?? card.cost ?? 0) <= this.viewState.player.inspiration;
       let view = this.handViews.get(card.uid);
       const prevZone = this.prevZones.get(card.uid);
       const fromPos = this.lastKnownPos.get(card.uid);
