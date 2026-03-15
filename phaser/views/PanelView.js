@@ -90,7 +90,7 @@ export class PanelView extends Phaser.GameObjects.Container {
     }
     if (this.layoutMode === "phone") {
       this.title.setText("");
-      this.primary.setText(data.handCount > 0 ? `EN  HP ${data.reputation}  H ${data.handCount}` : `EN  HP ${data.reputation}`);
+      this.primary.setText(`HP ${data.reputation}`);
       this.secondary.setText("");
     } else if (this.layoutMode !== "phone-player") {
       this.primary.setText(`REP ${data.reputation}   INSP ${data.inspiration}/${data.maxInspiration}`);

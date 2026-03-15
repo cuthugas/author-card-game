@@ -317,11 +317,24 @@ export class MatchScene extends Phaser.Scene {
       duration: opts.duration ?? 230,
       ease: opts.ease ?? "Quad.Out",
       onComplete: () => {
-        if (target.depth !== undefined) view.setDepth(target.depth);
-        view.setHomeTransform();
+        this.finalizeViewTransform(view, target);
         opts.onComplete?.();
       },
     });
+  }
+
+  finalizeViewTransform(view, target) {
+    if (!view || !target) return;
+    view.setPosition(target.x ?? view.x, target.y ?? view.y);
+    view.setAngle(target.angle ?? view.angle);
+    if (target.scale !== undefined) {
+      view.setScale(target.scale);
+    }
+    if (target.depth !== undefined) {
+      view.setDepth(target.depth);
+    }
+    view.setHomeTransform();
+    this.boardLayer.sort("depth");
   }
 
   getSlotTargets(side, count) {
