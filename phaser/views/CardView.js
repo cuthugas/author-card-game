@@ -25,6 +25,13 @@ const TYPE_SKINS = {
   },
 };
 
+function clampText(text = "", maxLength = 128) {
+  const clean = (text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  if (clean.length <= maxLength) return clean;
+  return `${clean.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+}
+
 export class CardView extends Phaser.GameObjects.Container {
   constructor(scene, card, opts = {}) {
     super(scene, 0, 0);
@@ -34,6 +41,7 @@ export class CardView extends Phaser.GameObjects.Container {
     this.isTruncated = false;
     this.selected = false;
     this.selectionPulseTween = null;
+    this.layoutMode = opts.layoutMode || "default";
 
     this.selectionGlow = scene.add.image(0, 0, "button-glow").setDisplaySize(222, 292).setTint(0xf1ca74).setAlpha(0);
     this.shadow = scene.add.image(6, 10, "card-shadow").setDisplaySize(182, 250).setAlpha(0.78);
@@ -162,7 +170,7 @@ export class CardView extends Phaser.GameObjects.Container {
 
     this.inputTarget.on("pointerover", () => {
       if (opts.interactive) this.hover(true);
-      if (this.isTruncated) this.tooltip.setVisible(true);
+      if (this.layoutMode !== "phone" && this.isTruncated) this.tooltip.setVisible(true);
     });
     this.inputTarget.on("pointerout", () => {
       if (opts.interactive) this.hover(false);
@@ -176,18 +184,69 @@ export class CardView extends Phaser.GameObjects.Container {
       });
     }
 
+    this.setLayout(this.layoutMode);
     this.updateData(card);
     scene.add.existing(this);
   }
 
   truncateBody(text) {
-    const clean = (text || "").trim();
-    if (clean.length <= 128) {
+    const clean = (text || "").replace(/\s+/g, " ").trim();
+    const maxLength = this.layoutMode === "phone" ? 54 : 128;
+    if (clean.length <= maxLength) {
       this.isTruncated = false;
       return clean || "No special effect.";
     }
     this.isTruncated = true;
-    return `${clean.slice(0, 125)}...`;
+    return clampText(clean, maxLength) || "No special effect.";
+  }
+
+  getTypeLabel(card) {
+    const skin = TYPE_SKINS[card.type] || TYPE_SKINS.character;
+    return card.type === "character" ? skin.tag : card.subtype === "literary_device" ? "DEVICE" : skin.tag;
+  }
+
+  setLayout(mode = "default") {
+    this.layoutMode = mode;
+    const compact = mode === "phone";
+
+    this.selectionGlow.setDisplaySize(compact ? 234 : 222, compact ? 308 : 292);
+    this.shadow.setDisplaySize(compact ? 188 : 182, compact ? 258 : 250).setPosition(6, compact ? 12 : 10);
+    this.base.setDisplaySize(164, 234);
+    this.frame.setDisplaySize(166, 236);
+    this.selectionRing.setDisplaySize(compact ? 188 : 182, compact ? 262 : 252);
+    this.targetGlow.setDisplaySize(compact ? 226 : 214, compact ? 298 : 284);
+    this.targetRing.setDisplaySize(compact ? 184 : 178, compact ? 256 : 248);
+    this.themeGlow.setDisplaySize(compact ? 194 : 184, compact ? 256 : 244).setPosition(0, compact ? -2 : -6);
+    this.themeGem.setPosition(58, compact ? -94 : -100);
+    this.themeSpark.setPosition(58, compact ? -94 : -100);
+
+    this.typeBadge.setPosition(0, compact ? -104 : -102).setSize(compact ? 98 : 118, compact ? 16 : 18);
+    this.typeLabel.setPosition(0, compact ? -104 : -102).setFontSize(compact ? "10px" : "11px");
+    this.costZone.setPosition(-62, compact ? -96 : -100).setRadius(compact ? 20 : 18);
+    this.cost.setPosition(-62, compact ? -96 : -100).setFontSize(compact ? "22px" : "19px");
+
+    this.titleZone.setPosition(0, compact ? -68 : -76).setSize(compact ? 148 : 144, compact ? 40 : 34);
+    this.title.setPosition(0, compact ? -68 : -76).setFontSize(compact ? "20px" : "17px");
+    this.title.setWordWrapWidth(compact ? 138 : 132);
+
+    this.author.setPosition(0, compact ? -38 : -52).setFontSize(compact ? "13px" : "12px");
+
+    this.bodyZone.setPosition(0, compact ? 2 : 10).setSize(compact ? 144 : 142, compact ? 52 : 100);
+    this.body.setPosition(-62, compact ? -18 : -32).setFontSize(compact ? "13px" : "12px");
+    this.body.setWordWrapWidth(compact ? 124 : 128);
+    this.body.setLineSpacing(compact ? 2 : 3);
+
+    this.iconAtk.setPosition(compact ? -56 : -50, compact ? 74 : 86).setDisplaySize(compact ? 19 : 18, compact ? 19 : 18);
+    this.iconDef.setPosition(compact ? 0 : -2, compact ? 74 : 86).setDisplaySize(compact ? 19 : 18, compact ? 19 : 18);
+    this.iconMem.setPosition(compact ? 56 : 46, compact ? 74 : 86).setDisplaySize(compact ? 19 : 18, compact ? 19 : 18);
+    this.statBg.setPosition(0, compact ? 78 : 86).setSize(compact ? 148 : 142, compact ? 48 : 38);
+    this.statAtk.setPosition(compact ? -38 : -24, compact ? 78 : 86).setFontSize(compact ? "18px" : "14px");
+    this.statDef.setPosition(compact ? 18 : 24, compact ? 78 : 86).setFontSize(compact ? "18px" : "14px");
+    this.statMem.setPosition(compact ? 72 : 68, compact ? 78 : 86).setFontSize(compact ? "18px" : "14px");
+
+    this.tooltip.setPosition(0, compact ? -156 : -146);
+    this.tooltip.setVisible(false);
+    this.setSize(166, 236);
   }
 
   updateData(card) {
@@ -195,7 +254,7 @@ export class CardView extends Phaser.GameObjects.Container {
     const skin = TYPE_SKINS[card.type] || TYPE_SKINS.character;
     this.base.setTint(skin.tintA, skin.tintA, skin.tintB, skin.tintB);
     this.frame.setTint(skin.edge);
-    this.typeLabel.setText(skin.tag);
+    this.typeLabel.setText(this.getTypeLabel(card));
     this.typeLabel.setColor(skin.title);
 
     this.title.setText(card.name || "");
@@ -206,7 +265,10 @@ export class CardView extends Phaser.GameObjects.Container {
 
     const effect = this.truncateBody(card.effectText || "No special effect.");
     this.body.setText(effect);
-    this.tooltipText.setText(card.effectText || "No special effect.");
+    const detailLines = [card.effectText || "No special effect."];
+    if (card.source) detailLines.push(`Source: ${card.source}`);
+    if (card.functionText) detailLines.push(`Function: ${card.functionText}`);
+    this.tooltipText.setText(detailLines.join("\n"));
 
     this.cost.setText(`${card.cost ?? 0}`);
 
@@ -229,7 +291,9 @@ export class CardView extends Phaser.GameObjects.Container {
       this.iconAtk.setVisible(false);
       this.iconDef.setVisible(false);
       this.iconMem.setVisible(false);
-      this.typeLabel.setText(card.subtype === "literary_device" ? "DEVICE" : skin.tag);
+      if (this.layoutMode === "phone") {
+        this.body.setText(clampText(card.effectText || "No special effect.", 44) || "No special effect.");
+      }
     }
 
     this.setThemeMatch(Boolean(card.matchesTheme));

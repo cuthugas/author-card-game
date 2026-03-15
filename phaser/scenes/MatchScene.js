@@ -1,6 +1,7 @@
 import { StateAdapter } from "../core/stateAdapter.js";
 import { CardView } from "../views/CardView.js";
 import { HandFan } from "../views/HandFan.js";
+import { CardDetailOverlay } from "../views/CardDetailOverlay.js";
 
 export class MatchScene extends Phaser.Scene {
   constructor() {
@@ -29,6 +30,8 @@ export class MatchScene extends Phaser.Scene {
     this.root.add([this.bgLayer, this.slotLayer, this.boardLayer, this.handLayer, this.fxLayer]);
 
     this.handFan = new HandFan(this, this.handLayer);
+    this.cardDetailOverlay = new CardDetailOverlay(this);
+    this.cardDetailOverlay.layout(this.scale.width, this.scale.height);
     this.drawBattlefield();
 
     const connected = this.adapter.connect((mapped) => {
@@ -51,6 +54,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.scale.on("resize", () => {
       this.drawBattlefield();
+      this.cardDetailOverlay.layout(this.scale.width, this.scale.height);
       this.renderState();
     });
   }
@@ -65,8 +69,9 @@ export class MatchScene extends Phaser.Scene {
     if (w < 900 || h < 540) {
       return {
         mode: "phone",
-        handScale: 0.54,
-        boardScale: 0.42,
+        cardLayout: "phone",
+        handScale: 0.7,
+        boardScale: 0.52,
         handBaseY: h - 52,
         handSidePadding: Math.max(118, w * 0.22),
         handAngle: 8,
@@ -75,13 +80,14 @@ export class MatchScene extends Phaser.Scene {
         handMaxSpread: 100,
         slotInset: Math.max(78, w * 0.13),
         slotBend: 8,
-        slotWidth: 96,
-        slotHeight: 60,
+        slotWidth: 108,
+        slotHeight: 72,
       };
     }
     if (w < 1020) {
       return {
         mode: "compact",
+        cardLayout: "default",
         handScale: 0.98,
         boardScale: 0.68,
         handBaseY: this.scale.height - 96,
@@ -98,6 +104,7 @@ export class MatchScene extends Phaser.Scene {
     if (w < 1320) {
       return {
         mode: "medium",
+        cardLayout: "default",
         handScale: 0.94,
         boardScale: 0.7,
         handBaseY: this.scale.height - 98,
@@ -113,6 +120,7 @@ export class MatchScene extends Phaser.Scene {
     }
     return {
       mode: "desktop",
+      cardLayout: "default",
       handScale: 0.9,
       boardScale: 0.72,
       handBaseY: this.scale.height - 102,
@@ -262,9 +270,23 @@ export class MatchScene extends Phaser.Scene {
     const view = new CardView(this, card, {
       interactive: config.interactive,
       disableHover: config.disableHover,
+      layoutMode: config.layoutMode || this.getProfile().cardLayout,
       onClick: () => config.onClick?.(card),
     });
     return view;
+  }
+
+  isPhoneLayout() {
+    return this.getProfile().mode === "phone";
+  }
+
+  openPhoneDetail(card, config = {}) {
+    const typeLabel = card.type === "character" ? "CHARACTER" : card.subtype === "literary_device" ? "DEVICE" : (card.type || "CARD").toUpperCase();
+    this.cardDetailOverlay.open(card, {
+      typeLabel,
+      actionLabel: config.actionLabel,
+      onAction: config.onAction,
+    });
   }
 
   moveTo(view, target, opts = {}) {
@@ -324,8 +346,32 @@ export class MatchScene extends Phaser.Scene {
         view = this.createView(card, {
           interactive: true,
           disableHover: isEnemy,
+          layoutMode: profile.cardLayout,
           onClick: () => {
             if (this.viewState.winner || this.viewState.pendingQuiz || this.viewState.currentPlayer !== "player") return;
+            if (this.isPhoneLayout()) {
+              if (!isEnemy) {
+                if (card.exhausted) {
+                  this.openPhoneDetail(card);
+                  return;
+                }
+                const actionLabel = this.viewState.selectedAttackerUid === card.uid ? "DESELECT" : "SELECT";
+                this.openPhoneDetail(card, {
+                  actionLabel,
+                  onAction: () => this.adapter.actions.selectAttacker?.(card.uid),
+                });
+                return;
+              }
+              if (this.viewState.selectedAttackerUid) {
+                this.openPhoneDetail(card, {
+                  actionLabel: "ATTACK",
+                  onAction: () => this.adapter.actions.attackUnit?.(card.uid),
+                });
+              } else {
+                this.openPhoneDetail(card);
+              }
+              return;
+            }
             if (!isEnemy) {
               this.adapter.actions.selectAttacker?.(card.uid);
               return;
@@ -347,6 +393,7 @@ export class MatchScene extends Phaser.Scene {
         map.set(card.uid, view);
       }
 
+      view.setLayout(profile.cardLayout);
       view.updateData(card);
       view.alpha = card.exhausted ? 0.68 : 1;
       view.setSelected(!isEnemy && this.viewState.selectedAttackerUid === card.uid);
@@ -401,7 +448,19 @@ export class MatchScene extends Phaser.Scene {
         view = this.createView(card, {
           interactive: true,
           disableHover: false,
-          onClick: () => this.adapter.actions.playHandCard?.(card.uid),
+          layoutMode: profile.cardLayout,
+          onClick: () => {
+            if (!this.isPhoneLayout()) {
+              this.adapter.actions.playHandCard?.(card.uid);
+              return;
+            }
+            this.openPhoneDetail(card, canPlay
+              ? {
+                  actionLabel: "PLAY",
+                  onAction: () => this.adapter.actions.playHandCard?.(card.uid),
+                }
+              : {});
+          },
         });
 
         const origin = fromPos || this.playerDeckPos;
@@ -413,9 +472,10 @@ export class MatchScene extends Phaser.Scene {
         this.handViews.set(card.uid, view);
       }
 
+      view.setLayout(profile.cardLayout);
       view.updateData(card);
       view.alpha = canPlay ? 1 : 0.56;
-      view.setInputEnabled(canPlay);
+      view.setInputEnabled(this.isPhoneLayout() ? true : canPlay);
       view.setThemeMatch(Boolean(card.matchesTheme));
       this.handLayer.bringToTop(view);
 
@@ -490,6 +550,10 @@ export class MatchScene extends Phaser.Scene {
 
   renderState() {
     if (!this.viewState) return;
+
+    if (!this.isPhoneLayout() || this.viewState.pendingQuiz || this.viewState.winner) {
+      this.cardDetailOverlay.hide();
+    }
 
     this.prevZones = this.currentZones;
     this.currentZones = this.buildZoneMap();
