@@ -803,7 +803,7 @@ function queueViewportSync() {
 }
 
 function bindViewportState() {
-  ["resize", "orientationchange", "load", "pageshow"].forEach((eventName) => {
+  ["resize", "orientationchange", "load", "pageshow", "fullscreenchange", "webkitfullscreenchange"].forEach((eventName) => {
     window.addEventListener(eventName, queueViewportSync);
   });
 
@@ -811,6 +811,48 @@ function bindViewportState() {
   window.visualViewport?.addEventListener("scroll", queueViewportSync);
   window.screen?.orientation?.addEventListener?.("change", queueViewportSync);
   queueViewportSync();
+}
+
+function getFullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function isFullscreenSupported() {
+  const root = document.documentElement;
+  return Boolean(
+    document.fullscreenEnabled ||
+      document.webkitFullscreenEnabled ||
+      root.requestFullscreen ||
+      root.webkitRequestFullscreen
+  );
+}
+
+async function toggleFullscreenMode() {
+  const root = document.documentElement;
+  const activeElement = getFullscreenElement();
+  const request =
+    root.requestFullscreen?.bind(root) ||
+    root.webkitRequestFullscreen?.bind(root);
+  const exit =
+    document.exitFullscreen?.bind(document) ||
+    document.webkitExitFullscreen?.bind(document);
+
+  if (!request || !exit) {
+    return false;
+  }
+
+  try {
+    if (activeElement) {
+      await exit();
+    } else {
+      await request();
+    }
+    queueViewportSync();
+    return true;
+  } catch {
+    queueViewportSync();
+    return false;
+  }
 }
 
 function shuffle(list) {
@@ -1614,6 +1656,7 @@ window.ACGCore = {
     newGame: initGame,
     draw: drawForPlayer,
     endTurn: endPlayerTurn,
+    toggleFullscreen: toggleFullscreenMode,
     playHandCard: playPlayerHandCard,
     selectAttacker,
     attackUnit: (defenderUid) => {
@@ -1629,6 +1672,8 @@ window.ACGCore = {
     STATE_EVENT_NAME,
     FX_EVENT_NAME,
     SFX_EVENT_NAME,
+    isFullscreenSupported,
+    getFullscreenElement,
   },
   ui: {
     setQuizHandler(handler) {

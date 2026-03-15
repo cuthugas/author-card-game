@@ -13,6 +13,7 @@ export class UIScene extends Phaser.Scene {
     this.previous = null;
     this.lastWinner = null;
     this.canDirectAttack = false;
+    this.fullscreenChangeHandler = null;
   }
 
   create() {
@@ -40,8 +41,15 @@ export class UIScene extends Phaser.Scene {
 
     this.drawBtn = new ButtonView(this, w - 208, h - 118, "DRAW", () => this.adapter.actions.draw?.());
     this.endTurnBtn = new ButtonView(this, w - 208, h - 52, "END TURN", () => this.adapter.actions.endTurn?.());
+    this.fullscreenBtn = new ButtonView(this, w - 208, h - 184, "FULL", async () => {
+      const success = await this.adapter.actions.toggleFullscreen?.();
+      if (success === false) {
+        this.updateFullscreenButton();
+      }
+    });
     this.drawBtn.setDepth(1130);
     this.endTurnBtn.setDepth(1130);
+    this.fullscreenBtn.setDepth(1130);
     this.playerPanel.setDepth(1120);
     this.enemyPanel.setDepth(1120);
 
@@ -107,8 +115,23 @@ export class UIScene extends Phaser.Scene {
       });
     }
 
+    this.fullscreenChangeHandler = () => {
+      this.updateFullscreenButton();
+      this.layout(this.scale.width, this.scale.height);
+    };
+    document.addEventListener("fullscreenchange", this.fullscreenChangeHandler);
+    document.addEventListener("webkitfullscreenchange", this.fullscreenChangeHandler);
+
     this.scale.on("resize", (size) => this.layout(size.width, size.height));
     this.layout(w, h);
+  }
+
+  shutdown() {
+    if (this.fullscreenChangeHandler) {
+      document.removeEventListener("fullscreenchange", this.fullscreenChangeHandler);
+      document.removeEventListener("webkitfullscreenchange", this.fullscreenChangeHandler);
+      this.fullscreenChangeHandler = null;
+    }
   }
 
   getLayoutProfile(w, h) {
@@ -118,6 +141,7 @@ export class UIScene extends Phaser.Scene {
         enemyPanelPos: { x: 88, y: 22 },
         playerPanelPos: { x: 88, y: h - 20 },
         actionPos: { x: w - 58, y: h - 52 },
+        fullscreenPos: { x: w - 58, y: h - 134 },
         drawPos: { x: w - 58, y: h - 84 },
         endTurnPos: { x: w - 58, y: h - 34 },
         playerDockSize: { w: 0, h: 0 },
@@ -132,7 +156,9 @@ export class UIScene extends Phaser.Scene {
         enemyPanelLayout: "phone",
         drawScale: 1,
         endTurnScale: 1,
+        fullscreenScale: 1,
         buttonLayout: "phone",
+        fullscreenLabel: "FULL",
         drawLabel: "DRAW",
         endTurnLabel: "END",
         showActionDock: false,
@@ -148,6 +174,7 @@ export class UIScene extends Phaser.Scene {
         enemyPanelPos: { x: w * 0.5, y: 66 },
         playerPanelPos: { x: w * 0.2, y: h - 188 },
         actionPos: { x: w - 146, y: h - 122 },
+        fullscreenPos: { x: w - 146, y: h - 196 },
         drawPos: { x: w - 146, y: h - 162 },
         endTurnPos: { x: w - 146, y: h - 88 },
         playerDockSize: { w: 390, h: 134 },
@@ -162,7 +189,9 @@ export class UIScene extends Phaser.Scene {
         enemyPanelLayout: "default",
         drawScale: 1.18,
         endTurnScale: 1.28,
+        fullscreenScale: 1.02,
         buttonLayout: "default",
+        fullscreenLabel: "FULL",
         drawLabel: "DRAW",
         endTurnLabel: "END TURN",
         showActionDock: true,
@@ -177,6 +206,7 @@ export class UIScene extends Phaser.Scene {
       enemyPanelPos: { x: w * 0.5, y: 60 },
       playerPanelPos: { x: w * 0.2, y: h - 178 },
       actionPos: { x: w - 162, y: h - 118 },
+      fullscreenPos: { x: w - 162, y: h - 196 },
       drawPos: { x: w - 162, y: h - 156 },
       endTurnPos: { x: w - 162, y: h - 84 },
       playerDockSize: { w: 416, h: 140 },
@@ -191,7 +221,9 @@ export class UIScene extends Phaser.Scene {
       enemyPanelLayout: "default",
       drawScale: 1.1,
       endTurnScale: 1.18,
+      fullscreenScale: 1,
       buttonLayout: "default",
+      fullscreenLabel: "FULL",
       drawLabel: "DRAW",
       endTurnLabel: "END TURN",
       showActionDock: true,
@@ -208,8 +240,10 @@ export class UIScene extends Phaser.Scene {
     this.enemyPanel.setLayout(profile.enemyPanelLayout);
     this.drawBtn.setLayout(profile.buttonLayout);
     this.endTurnBtn.setLayout(profile.buttonLayout);
+    this.fullscreenBtn.setLayout(profile.buttonLayout);
     this.drawBtn.setLabel(profile.drawLabel);
     this.endTurnBtn.setLabel(profile.endTurnLabel);
+    this.fullscreenBtn.setLabel(profile.fullscreenLabel);
 
     this.playerPanelDock.setPosition(profile.playerPanelPos.x, profile.playerPanelPos.y);
     this.playerPanelDock.setDisplaySize(profile.playerDockSize.w, profile.playerDockSize.h);
@@ -235,8 +269,10 @@ export class UIScene extends Phaser.Scene {
 
     this.drawBtn.setPosition(profile.drawPos.x, profile.drawPos.y);
     this.endTurnBtn.setPosition(profile.endTurnPos.x, profile.endTurnPos.y);
+    this.fullscreenBtn.setPosition(profile.fullscreenPos.x, profile.fullscreenPos.y);
     this.drawBtn.setScale(profile.drawScale);
     this.endTurnBtn.setScale(profile.endTurnScale);
+    this.fullscreenBtn.setScale(profile.fullscreenScale);
 
     this.turnInfo.setPosition(profile.turnInfo.x, profile.turnInfo.y);
     this.turnInfo.setFontSize(profile.turnInfo.size);
@@ -249,6 +285,22 @@ export class UIScene extends Phaser.Scene {
     this.turnBanner.setPosition(w * 0.5, h * 0.5);
     this.quizOverlay.layout(w, h);
     this.winnerOverlay.layout(w, h);
+    this.updateFullscreenButton();
+  }
+
+  updateFullscreenButton() {
+    const supported = Boolean(
+      window.ACGCore?.constants?.isFullscreenSupported?.() ||
+      document.fullscreenEnabled ||
+      document.webkitFullscreenEnabled
+    );
+    const active = Boolean(
+      window.ACGCore?.constants?.getFullscreenElement?.() ||
+      document.fullscreenElement ||
+      document.webkitFullscreenElement
+    );
+    this.fullscreenBtn.setLabel(active ? "EXIT" : "FULL");
+    this.fullscreenBtn.setEnabled(supported);
   }
 
   renderState() {
@@ -286,6 +338,7 @@ export class UIScene extends Phaser.Scene {
     const disableActions = Boolean(this.current.winner || this.current.pendingQuiz || this.current.currentPlayer !== "player");
     this.drawBtn.setEnabled(!disableActions && !this.current.player.hasDrawnThisTurn);
     this.endTurnBtn.setEnabled(!disableActions);
+    this.updateFullscreenButton();
 
     if (previous) {
       if (previous.player.inspiration !== this.current.player.inspiration || previous.player.reputation !== this.current.player.reputation) {
