@@ -78,10 +78,21 @@ export class UIScene extends Phaser.Scene {
         wordWrap: { width: 460 },
       })
       .setOrigin(0, 0.5);
+    this.buildMarker = this.add
+      .text(18, h - 18, "cheshire cat test", {
+        fontFamily: "Spectral",
+        fontSize: "12px",
+        color: "#d6c29a",
+        stroke: "#120d09",
+        strokeThickness: 3,
+      })
+      .setOrigin(0, 1)
+      .setAlpha(0.82);
 
     this.turnInfo.setDepth(1150);
     this.themeInfo.setDepth(1150);
     this.themeReminder.setDepth(1150);
+    this.buildMarker.setDepth(1150);
     this.playerPanelDock.setDepth(1080);
     this.enemyPanelDock.setDepth(1080);
     this.actionDock.setDepth(1080);
@@ -282,6 +293,8 @@ export class UIScene extends Phaser.Scene {
     this.themeReminder.setFontSize(profile.themeReminder.size);
     this.themeReminder.setWordWrapWidth(profile.themeReminder.width);
     this.themeReminder.setVisible(profile.themeReminder.visible !== false);
+    this.buildMarker.setPosition(profile.mode === "phone" ? 10 : 18, h - (profile.mode === "phone" ? 8 : 18));
+    this.buildMarker.setFontSize(profile.mode === "phone" ? "10px" : "12px");
     this.turnBanner.setPosition(w * 0.5, h * 0.5);
     this.quizOverlay.layout(w, h);
     this.winnerOverlay.layout(w, h);
