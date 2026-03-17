@@ -1,4 +1,4 @@
-const CACHE_NAME = "author-card-prototype-v3";
+const CACHE_NAME = "author-card-prototype-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,12 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest"
 ];
+const SHELL_ASSET_PATHS = new Set(["/", "/index.html", "/styles.css", "/app.js", "/manifest.webmanifest"]);
+
+function isShellAsset(requestUrl) {
+  const url = new URL(requestUrl);
+  return SHELL_ASSET_PATHS.has(url.pathname);
+}
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -39,6 +45,19 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  if (isShellAsset(event.request.url)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
