@@ -11,6 +11,7 @@ const STATE_EVENT_NAME = "acg:state";
 const FX_EVENT_NAME = "acg:fx";
 const PHONE_LAYOUT_MAX_HEIGHT = 1100;
 const PHONE_ROTATE_SHORT_SIDE = 600;
+const APP_BUILD_ID = "d924f2c";
 
 const AUTHOR_PROFILES = {
   Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
@@ -493,6 +494,36 @@ const phaserUiBridge = {
 const viewportState = {
   syncFrame: 0,
 };
+
+console.log(`APP JS BUILD ${APP_BUILD_ID} LOADED`);
+
+function ensureBuildBadge() {
+  const existing = document.getElementById("acg-build-badge");
+  if (existing) return existing;
+  const badge = document.createElement("div");
+  badge.id = "acg-build-badge";
+  badge.textContent = `BUILD ${APP_BUILD_ID}`;
+  badge.setAttribute("aria-label", `Build ${APP_BUILD_ID}`);
+  Object.assign(badge.style, {
+    position: "fixed",
+    left: "10px",
+    bottom: "10px",
+    zIndex: "1200",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    border: "1px solid rgba(245, 223, 177, 0.35)",
+    background: "rgba(15, 22, 40, 0.78)",
+    color: "#f4dfb1",
+    fontFamily: "\"Spectral\", Georgia, serif",
+    fontSize: "12px",
+    lineHeight: "1",
+    letterSpacing: "0.04em",
+    pointerEvents: "none",
+    boxShadow: "0 3px 10px rgba(0, 0, 0, 0.28)",
+  });
+  document.body.appendChild(badge);
+  return badge;
+}
 
 function stateSnapshot() {
   if (!state) return null;
@@ -1872,6 +1903,7 @@ window.addEventListener(SFX_EVENT_NAME, handleSfxEvent);
 window.addEventListener("pointerdown", unlockAudio, { once: true });
 window.addEventListener("keydown", unlockAudio, { once: true });
 updateAudioToggleUi();
+ensureBuildBadge();
 bindViewportState();
 runScreenIntro();
 

@@ -79,7 +79,7 @@ export class UIScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5);
     this.buildMarker = this.add
-      .text(18, h - 18, "cheshire cat test", {
+      .text(18, h - 18, "BUILD d924f2c", {
         fontFamily: "Spectral",
         fontSize: "12px",
         color: "#d6c29a",
