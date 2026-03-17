@@ -555,6 +555,12 @@ function hasCardTriggers(card, eventName = null) {
   return eventName ? getCardTriggers(card, eventName).length > 0 : Boolean(card?.triggers?.length);
 }
 
+function debugTriggerFlow(message, detail = {}) {
+  try {
+    console.debug(`[ACG Trigger] ${message}`, detail);
+  } catch {}
+}
+
 function getOwnerAndEnemy(ownerKey) {
   return {
     owner: state[ownerKey],
@@ -596,9 +602,20 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
       addKnowledge(ownerKey, amount, `${sourceCard.name} trigger`);
       break;
     case "gainInspiration":
+      debugTriggerFlow("gainInspiration:before", {
+        ownerKey,
+        card: sourceCard?.key,
+        currentInspiration: owner.inspiration,
+        amount,
+      });
       owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + amount);
       spawnFloatingFx(`+${amount} Insp`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} gains +${amount} Inspiration from ${sourceCard.name}.`);
+      debugTriggerFlow("gainInspiration:after", {
+        ownerKey,
+        card: sourceCard?.key,
+        updatedInspiration: owner.inspiration,
+      });
       break;
     case "dealDamage": {
       const targetCard = resolveTriggerTarget(ownerKey, effect, { ...context, sourceCard });
@@ -672,20 +689,36 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
 // 1. A gameplay moment fires a named event such as onPlay/onSummon/onDefeat.
 // 2. We inspect the source card's trigger data for matching entries.
 // 3. Matching effects resolve in card-data order, keeping behavior predictable.
-function resolveCardTriggers(ownerKey, card, eventName, context = {}) {
+function dispatchCardEvent(ownerKey, card, eventName, context = {}) {
   const triggers = getCardTriggers(card, eventName);
+  debugTriggerFlow("dispatch", {
+    ownerKey,
+    eventName,
+    card: card?.key,
+    triggerCount: triggers.length,
+  });
   triggers.forEach((trigger) => {
     (trigger.effects || []).forEach((effect) => {
-      resolveTriggerEffect(ownerKey, card, effect, context);
+      debugTriggerFlow("effect", {
+        ownerKey,
+        eventName,
+        card: card?.key,
+        effectType: effect?.type,
+      });
+      resolveTriggerEffect(ownerKey, card, effect, { ...context, ownerKey, sourceCard: card });
     });
   });
+}
+
+function resolveCardTriggers(ownerKey, card, eventName, context = {}) {
+  dispatchCardEvent(ownerKey, card, eventName, context);
 }
 
 function resolveBoardTriggers(ownerKey, eventName, context = {}) {
   const boardSnapshot = [...state[ownerKey].board];
   boardSnapshot.forEach((card) => {
     if (!state[ownerKey].board.some((boardCard) => boardCard.uid === card.uid)) return;
-    resolveCardTriggers(ownerKey, card, eventName, context);
+    dispatchCardEvent(ownerKey, card, eventName, context);
   });
 }
 
@@ -1314,20 +1347,32 @@ async function playCard(ownerKey, handIndex) {
   if (cardCost > owner.inspiration) return;
 
   owner.inspiration -= cardCost;
+  debugTriggerFlow("playCard:start", {
+    ownerKey,
+    card: card?.key,
+    handIndex,
+    cost: cardCost,
+    inspirationAfterCost: owner.inspiration,
+  });
   spawnFloatingFx(`-${cardCost} Insp`, panelForOwner(ownerKey), "info");
   owner.hand.splice(handIndex, 1);
 
   if (card.type === "character") {
     owner.board.push(card);
+    debugTriggerFlow("playCard:characterAddedToBoard", {
+      ownerKey,
+      card: card?.key,
+      boardSize: owner.board.length,
+    });
     logEvent(`${owner.name} summons ${card.name}.`);
     spawnFloatingFx("Summoned", panelForOwner(ownerKey), "heal");
     emitSfx("card_play_character", { side: ownerKey, card: card.name, rarity: card.rarity });
     applyAuthorCharacterRules(ownerKey, card);
-    resolveCardTriggers(ownerKey, card, "onPlay", { ownerKey });
-    resolveCardTriggers(ownerKey, card, "onSummon", { ownerKey });
+    dispatchCardEvent(ownerKey, card, "onPlay", { phase: "playCard" });
+    dispatchCardEvent(ownerKey, card, "onSummon", { phase: "playCard" });
   } else {
     if (hasCardTriggers(card, "onPlay")) {
-      resolveCardTriggers(ownerKey, card, "onPlay", { ownerKey });
+      dispatchCardEvent(ownerKey, card, "onPlay", { phase: "playCard" });
     } else {
       resolveEffect(ownerKey, card);
     }
