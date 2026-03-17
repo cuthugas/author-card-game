@@ -445,7 +445,7 @@ const cardPool = [
   { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Embodies persuasion, guilt, and ambition.", effectText: "None." },
   { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "None." },
   { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "None." },
-  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "None." },
+  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "On Summon: Gain +1 Inspiration.", triggers: [{ event: "onSummon", effects: [{ type: "gainInspiration", amount: 1 }] }] },
   { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Parodies arbitrary authority.", effectText: "None." },
   { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "None." },
   { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", subtype: "literary_device", author: "Literary Device", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, themes: ["power", "identity"], who: "A poetic meter of five unstressed/stressed pairs per line.", why: "Key rhythm used in Shakespeare's dramatic verse.", effectText: "Best ally gains +2 ATK and +1 MEM.", quiz: { question: "What is iambic pentameter?", options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"], correctIndex: 0, explanation: "Iambic pentameter is a 10-syllable line with five iambs." } },
@@ -453,7 +453,7 @@ const cardPool = [
   { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Wonderland", cost: 3, effect: "destroy_enemy_lowest_mem", themes: ["curiosity", "power"], who: "Reference to the Vorpal Sword in Jabberwocky.", why: "Connects nonsense verse and heroic quest language.", effectText: "Destroy weakest enemy character." },
   { key: "o_happy_dagger", name: "O Happy Dagger", type: "artifact", author: "Shakespeare", cost: 1, effect: "damage_enemy_writer", value: 2, themes: ["tragedy", "ambition"], who: "Allusion to Juliet's final line in Romeo and Juliet.", why: "Highlights tragic climax and symbolism.", effectText: "Deal 2 to enemy Reputation." },
   { key: "yoricks_skull", name: "Yorick's Skull", type: "artifact", author: "Shakespeare", cost: 2, effect: "resurrect_character", themes: ["identity", "tragedy"], who: "Skull held by Hamlet in Act V.", why: "Symbolizes mortality and memory.", effectText: "Return a character from discard to hand." },
-  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Wonderland", cost: 2, effect: "draw_cards", value: 2, themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "Draw 2 cards." },
+  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Wonderland", cost: 2, effect: "draw_cards", value: 2, themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "On Play: Draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 2 }] }] },
   { key: "revision", name: "Revision", type: "plot", author: "Writing", cost: 2, effect: "heal_self", value: 3, themes: ["identity"], who: "Reworking ideas after feedback.", why: "Shows growth and deeper understanding in writing.", effectText: "Restore 3 Reputation." },
   { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Writing", cost: 1, effect: "gain_inspiration", value: 2, themes: ["power", "ambition"], who: "Focused push to finish written work.", why: "Represents urgency and productivity pressure.", effectText: "Gain +2 Inspiration this turn." },
   { key: "tea_party_chaos", name: "Tea Party Chaos", type: "plot", author: "Wonderland", cost: 3, effect: "weaken_enemy_all", value: 1, themes: ["curiosity", "wonderland"], who: "Mad Tea Party scene.", why: "Highlights absurd logic and social satire.", effectText: "All enemies lose 1 ATK (min 1)." },
@@ -524,7 +524,19 @@ function inferRarity(card) {
 }
 
 function cloneCardTemplate(card) {
-  const cloned = { ...card, themes: card.themes ? [...card.themes] : [], quiz: card.quiz ? { ...card.quiz, options: [...card.quiz.options] } : null, value: card.value && typeof card.value === "object" ? { ...card.value } : card.value };
+  const cloned = {
+    ...card,
+    themes: card.themes ? [...card.themes] : [],
+    quiz: card.quiz ? { ...card.quiz, options: [...card.quiz.options] } : null,
+    value: card.value && typeof card.value === "object" ? { ...card.value } : card.value,
+    triggers: card.triggers ? card.triggers.map((trigger) => ({
+      ...trigger,
+      effects: (trigger.effects || []).map((effect) => ({
+        ...effect,
+        value: effect.value && typeof effect.value === "object" ? { ...effect.value } : effect.value,
+      })),
+    })) : [],
+  };
   cloned.rarity = card.rarity || inferRarity(card);
   cloned.uid = `${card.key}_${uid++}`;
   if (cloned.type === "character") {
@@ -532,6 +544,149 @@ function cloneCardTemplate(card) {
     cloned.exhausted = false;
   }
   return cloned;
+}
+
+function getCardTriggers(card, eventName) {
+  if (!card?.triggers?.length) return [];
+  return card.triggers.filter((trigger) => trigger?.event === eventName);
+}
+
+function hasCardTriggers(card, eventName = null) {
+  return eventName ? getCardTriggers(card, eventName).length > 0 : Boolean(card?.triggers?.length);
+}
+
+function getOwnerAndEnemy(ownerKey) {
+  return {
+    owner: state[ownerKey],
+    enemy: ownerKey === "player" ? state.ai : state.player,
+  };
+}
+
+function resolveTriggerTarget(ownerKey, effect, context = {}) {
+  const { owner, enemy } = getOwnerAndEnemy(ownerKey);
+  switch (effect.target) {
+    case "self":
+      return context.sourceCard || null;
+    case "friendlyHighestAttack":
+      return pickHighestAttack(owner.board);
+    case "enemyHighestAttack":
+      return pickHighestAttack(enemy.board);
+    case "enemyLowestMem":
+      return pickLowestMem(enemy.board);
+    default:
+      return null;
+  }
+}
+
+// Trigger effects stay intentionally small and readable for the prototype.
+// Cards can declare event-driven behavior in data and this dispatcher maps it
+// onto a modest set of effect payloads without introducing a large rules engine.
+function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
+  if (!effect?.type) return;
+  const { owner, enemy } = getOwnerAndEnemy(ownerKey);
+  const amount = effect.amount ?? effect.value ?? 1;
+
+  switch (effect.type) {
+    case "drawCard":
+      drawCards(owner, amount);
+      spawnFloatingFx(`+${amount} card`, panelForOwner(ownerKey), "info");
+      logEvent(`${owner.name} draws ${amount} card(s) from ${sourceCard.name}.`);
+      break;
+    case "gainKnowledge":
+      addKnowledge(ownerKey, amount, `${sourceCard.name} trigger`);
+      break;
+    case "gainInspiration":
+      owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + amount);
+      spawnFloatingFx(`+${amount} Insp`, panelForOwner(ownerKey), "info");
+      logEvent(`${owner.name} gains +${amount} Inspiration from ${sourceCard.name}.`);
+      break;
+    case "dealDamage": {
+      const targetCard = resolveTriggerTarget(ownerKey, effect, { ...context, sourceCard });
+      if (effect.target === "enemyWriter" || (!targetCard && effect.fallbackTarget === "enemyWriter")) {
+        enemy.reputation -= amount;
+        const panel = panelForOwner(ownerKey === "player" ? "ai" : "player");
+        flashTarget(panel);
+        spawnFloatingFx(`-${amount}`, panel);
+        logEvent(`${sourceCard.name} deals ${amount} damage to ${enemy.name}.`);
+        break;
+      }
+      if (targetCard) {
+        targetCard.currentMemorability -= amount;
+        const targetEl = cardElementByUid(targetCard.uid);
+        flashTarget(targetEl);
+        spawnFloatingFx(`-${amount}`, targetEl);
+        logEvent(`${sourceCard.name} deals ${amount} damage to ${targetCard.name}.`);
+      }
+      break;
+    }
+    case "heal":
+      owner.reputation += amount;
+      flashTarget(panelForOwner(ownerKey));
+      spawnFloatingFx(`+${amount}`, panelForOwner(ownerKey), "heal");
+      logEvent(`${owner.name} restores ${amount} Reputation from ${sourceCard.name}.`);
+      break;
+    case "buffSelf":
+      if (!sourceCard || sourceCard.type !== "character") break;
+      if (effect.attack) sourceCard.attack += effect.attack;
+      if (effect.memorability) sourceCard.currentMemorability += effect.memorability;
+      if (effect.defense) sourceCard.defense += effect.defense;
+      spawnFloatingFx("Empowered", cardElementByUid(sourceCard.uid) || panelForOwner(ownerKey), "heal");
+      logEvent(`${sourceCard.name} is empowered by its trigger.`);
+      break;
+    case "returnCardToHand":
+      if (effect.target === "self" && sourceCard) {
+        sourceCard.currentMemorability = sourceCard.memorability || sourceCard.currentMemorability;
+        sourceCard.exhausted = false;
+        owner.hand.push(sourceCard);
+        context.preventDiscard = true;
+        spawnFloatingFx("Return", panelForOwner(ownerKey), "heal");
+        logEvent(`${sourceCard.name} returns to ${owner.name}'s hand.`);
+      } else {
+        const index = owner.discard.findIndex((card) => card.type === "character");
+        if (index >= 0) {
+          const revived = owner.discard.splice(index, 1)[0];
+          revived.currentMemorability = revived.memorability;
+          revived.exhausted = false;
+          owner.hand.push(revived);
+          spawnFloatingFx("Revive", panelForOwner(ownerKey), "heal");
+          logEvent(`${owner.name} returns ${revived.name} to hand via ${sourceCard.name}.`);
+        }
+      }
+      break;
+    case "destroyTarget": {
+      const targetCard = resolveTriggerTarget(ownerKey, effect, { ...context, sourceCard });
+      if (!targetCard) break;
+      targetCard.currentMemorability = 0;
+      const targetEl = cardElementByUid(targetCard.uid);
+      flashTarget(targetEl);
+      spawnFloatingFx("KO", targetEl);
+      logEvent(`${sourceCard.name} destroys ${targetCard.name}.`);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+// Trigger flow:
+// 1. A gameplay moment fires a named event such as onPlay/onSummon/onDefeat.
+// 2. We inspect the source card's trigger data for matching entries.
+// 3. Matching effects resolve in card-data order, keeping behavior predictable.
+function resolveCardTriggers(ownerKey, card, eventName, context = {}) {
+  const triggers = getCardTriggers(card, eventName);
+  triggers.forEach((trigger) => {
+    (trigger.effects || []).forEach((effect) => {
+      resolveTriggerEffect(ownerKey, card, effect, context);
+    });
+  });
+}
+
+function resolveBoardTriggers(ownerKey, eventName, context = {}) {
+  const boardSnapshot = [...state[ownerKey].board];
+  boardSnapshot.forEach((card) => {
+    if (!state[ownerKey].board.some((boardCard) => boardCard.uid === card.uid)) return;
+    resolveCardTriggers(ownerKey, card, eventName, context);
+  });
 }
 
 function emitSfx(name, detail = {}) {
@@ -1012,6 +1167,7 @@ function beginTurn(side) {
   state.selectedAttackerUid = null;
   logEvent(`${side === "player" ? "Your turn" : "AI turn"}: Inspiration refilled to ${owner.inspiration}.`);
   emitSfx("turn_start", { side });
+  resolveBoardTriggers(side, "onTurnStart", { side });
 }
 
 function flashTarget(element) {
@@ -1167,8 +1323,14 @@ async function playCard(ownerKey, handIndex) {
     spawnFloatingFx("Summoned", panelForOwner(ownerKey), "heal");
     emitSfx("card_play_character", { side: ownerKey, card: card.name, rarity: card.rarity });
     applyAuthorCharacterRules(ownerKey, card);
+    resolveCardTriggers(ownerKey, card, "onPlay", { ownerKey });
+    resolveCardTriggers(ownerKey, card, "onSummon", { ownerKey });
   } else {
-    resolveEffect(ownerKey, card);
+    if (hasCardTriggers(card, "onPlay")) {
+      resolveCardTriggers(ownerKey, card, "onPlay", { ownerKey });
+    } else {
+      resolveEffect(ownerKey, card);
+    }
     owner.discard.push(card);
     logEvent(`${owner.name} plays ${card.name}.`);
     spawnFloatingFx("Effect Resolved", panelForOwner(ownerKey), "info");
@@ -1344,7 +1506,11 @@ function cleanupDefeated() {
     owner.board.forEach((card) => {
       if (card.currentMemorability <= 0) {
         playLeaveFx(card.uid, key);
-        owner.discard.push(card);
+        const defeatContext = { ownerKey: key, preventDiscard: false };
+        resolveCardTriggers(key, card, "onDefeat", defeatContext);
+        if (!defeatContext.preventDiscard) {
+          owner.discard.push(card);
+        }
         logEvent(`${card.name} is defeated.`);
         emitSfx("card_defeated", { side: key, card: card.name });
       } else {
@@ -1563,6 +1729,7 @@ async function runTurnEndQuickCheck(ownerKey) {
 
 async function endPlayerTurn() {
   if (state.currentPlayer !== "player" || state.winner || state.pendingQuiz) return;
+  resolveBoardTriggers("player", "onTurnEnd", { side: "player" });
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
     await runTurnEndQuickCheck("player");
     if (state.winner) return;
@@ -1619,8 +1786,11 @@ async function runAiTurn() {
   if (state.winner) return;
 
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
+    resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
     await runTurnEndQuickCheck("ai");
     if (state.winner) return;
+  } else {
+    resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
   }
 
   state.turn += 1;
