@@ -582,6 +582,13 @@ function getCardTriggers(card, eventName) {
   return card.triggers.filter((trigger) => trigger?.event === eventName);
 }
 
+function logCheshireDebug(stage, payload = {}) {
+  if (payload?.card?.key !== "cheshire_cat" && payload?.sourceCard?.key !== "cheshire_cat") return;
+  try {
+    console.log(`[Cheshire Debug] ${stage}`, payload);
+  } catch {}
+}
+
 function hasCardTriggers(card, eventName = null) {
   return eventName ? getCardTriggers(card, eventName).length > 0 : Boolean(card?.triggers?.length);
 }
@@ -617,6 +624,13 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
   const { owner, enemy } = getOwnerAndEnemy(ownerKey);
   const amount = effect.amount ?? effect.value ?? 1;
 
+  logCheshireDebug("resolveTriggerEffect:start", {
+    ownerKey,
+    sourceCard,
+    effect,
+    inspirationBefore: owner?.inspiration,
+  });
+
   switch (effect.type) {
     case "drawCard":
       drawCards(owner, amount);
@@ -628,6 +642,12 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
       break;
     case "gainInspiration":
       owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + amount);
+      logCheshireDebug("resolveTriggerEffect:gainInspiration", {
+        ownerKey,
+        sourceCard,
+        amount,
+        inspirationAfter: owner.inspiration,
+      });
       spawnFloatingFx(`+${amount} Insp`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} gains +${amount} Inspiration from ${sourceCard.name}.`);
       break;
@@ -705,6 +725,13 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
 // 3. Matching effects resolve in card-data order, keeping behavior predictable.
 function dispatchCardEvent(ownerKey, card, eventName, context = {}) {
   const triggers = getCardTriggers(card, eventName);
+  logCheshireDebug("dispatchCardEvent", {
+    ownerKey,
+    card,
+    eventName,
+    triggers,
+    context,
+  });
   triggers.forEach((trigger) => {
     (trigger.effects || []).forEach((effect) => {
       resolveTriggerEffect(ownerKey, card, effect, { ...context, ownerKey, sourceCard: card });
@@ -1348,12 +1375,30 @@ async function playCard(ownerKey, handIndex) {
   const cardCost = getCardCost(owner, card);
   if (cardCost > owner.inspiration) return;
 
+  logCheshireDebug("playCard:beforePlay", {
+    ownerKey,
+    card,
+    cardCost,
+    inspirationBeforePlay: owner.inspiration,
+  });
+
   owner.inspiration -= cardCost;
   spawnFloatingFx(`-${cardCost} Insp`, panelForOwner(ownerKey), "info");
   owner.hand.splice(handIndex, 1);
 
   if (card.type === "character") {
     owner.board.push(card);
+    logCheshireDebug("playCard:afterBoardPush", {
+      ownerKey,
+      card,
+      board: owner.board.map((boardCard) => ({
+        key: boardCard.key,
+        uid: boardCard.uid,
+        triggers: boardCard.triggers,
+      })),
+      summonTriggers: getCardTriggers(card, "onSummon"),
+      inspirationAfterCost: owner.inspiration,
+    });
     logEvent(`${owner.name} summons ${card.name}.`);
     spawnFloatingFx("Summoned", panelForOwner(ownerKey), "heal");
     emitSfx("card_play_character", { side: ownerKey, card: card.name, rarity: card.rarity });
@@ -1378,7 +1423,17 @@ async function playCard(ownerKey, handIndex) {
   applyThemeObjective(ownerKey, card);
   cleanupDefeated();
   checkWinner();
+  logCheshireDebug("playCard:complete", {
+    ownerKey,
+    card,
+    inspirationAfterPlayCard: owner.inspiration,
+  });
   render();
+  logCheshireDebug("playCard:afterRender", {
+    ownerKey,
+    card,
+    inspirationAfterRender: owner.inspiration,
+  });
 }
 
 function resolveEffect(ownerKey, card) {
