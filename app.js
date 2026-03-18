@@ -1537,25 +1537,34 @@ function playLeaveFx(cardUid, ownerKey) {
 }
 
 function cleanupDefeated() {
-  ["player", "ai"].forEach((key) => {
-    const owner = state[key];
-    const survivors = [];
-    owner.board.forEach((card) => {
-      if (card.currentMemorability <= 0) {
-        playLeaveFx(card.uid, key);
-        const defeatContext = { ownerKey: key, preventDiscard: false };
-        resolveCardTriggers(key, card, "onDefeat", defeatContext);
-        if (!defeatContext.preventDiscard) {
-          owner.discard.push(card);
+  let foundDefeated = false;
+
+  do {
+    foundDefeated = false;
+
+    ["player", "ai"].forEach((key) => {
+      const owner = state[key];
+      const survivors = [];
+
+      owner.board.forEach((card) => {
+        if (card.currentMemorability <= 0) {
+          foundDefeated = true;
+          playLeaveFx(card.uid, key);
+          const defeatContext = { ownerKey: key, preventDiscard: false };
+          resolveCardTriggers(key, card, "onDefeat", defeatContext);
+          if (!defeatContext.preventDiscard) {
+            owner.discard.push(card);
+          }
+          logEvent(`${card.name} is defeated.`);
+          emitSfx("card_defeated", { side: key, card: card.name });
+        } else {
+          survivors.push(card);
         }
-        logEvent(`${card.name} is defeated.`);
-        emitSfx("card_defeated", { side: key, card: card.name });
-      } else {
-        survivors.push(card);
-      }
+      });
+
+      owner.board = survivors;
     });
-    owner.board = survivors;
-  });
+  } while (foundDefeated);
 }
 
 function checkWinner() {

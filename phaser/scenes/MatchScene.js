@@ -306,6 +306,8 @@ export class MatchScene extends Phaser.Scene {
   }
 
   moveTo(view, target, opts = {}) {
+    this.tweens.killTweensOf(view);
+    if (view.shadow) this.tweens.killTweensOf(view.shadow);
     if (opts.movingDepth !== undefined) view.setDepth(opts.movingDepth);
     this.tweens.add({
       targets: view,
@@ -335,6 +337,7 @@ export class MatchScene extends Phaser.Scene {
     }
     view.setHomeTransform();
     this.boardLayer.sort("depth");
+    this.handLayer.sort("depth");
   }
 
   getSlotTargets(side, count) {
