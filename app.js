@@ -1334,12 +1334,22 @@ async function resolveKnowledgeCheck(ownerKey, quiz, title) {
 function applyThemeObjective(ownerKey, card) {
   if (!card.themes || !card.themes.includes(state.matchTheme.key)) return;
   const owner = state[ownerKey];
+  const inspirationBefore = owner.inspiration;
   owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + 1);
+  logCheshireDebug("applyThemeObjective", {
+    ownerKey,
+    card,
+    themeKey: state.matchTheme.key,
+    inspirationBeforeTheme: inspirationBefore,
+    inspirationAfterTheme: owner.inspiration,
+  });
   if (isThemeBonusEnabled()) {
     addKnowledge(ownerKey, 1, `matched theme ${state.matchTheme.label}`);
+    logEvent(`${card.name} matches ${state.matchTheme.label} and grants +1 Inspiration and +1 Knowledge.`);
     spawnFloatingFx("Theme Match  +1 Insp  +1 Knw", panelForOwner(ownerKey), "info");
     return;
   }
+  logEvent(`${card.name} matches ${state.matchTheme.label} and grants +1 Inspiration.`);
   spawnFloatingFx("Theme Match  +1 Insp", panelForOwner(ownerKey), "info");
 }
 
@@ -1378,11 +1388,21 @@ async function playCard(ownerKey, handIndex) {
   logCheshireDebug("playCard:beforePlay", {
     ownerKey,
     card,
+    activeAuthor: owner.activeAuthor,
+    baseCost: card.cost,
     cardCost,
     inspirationBeforePlay: owner.inspiration,
+    currentTheme: state.matchTheme?.key,
   });
 
   owner.inspiration -= cardCost;
+  logCheshireDebug("playCard:afterCost", {
+    ownerKey,
+    card,
+    activeAuthor: owner.activeAuthor,
+    computedPlayCost: cardCost,
+    inspirationAfterCost: owner.inspiration,
+  });
   spawnFloatingFx(`-${cardCost} Insp`, panelForOwner(ownerKey), "info");
   owner.hand.splice(handIndex, 1);
 
@@ -1397,7 +1417,7 @@ async function playCard(ownerKey, handIndex) {
         triggers: boardCard.triggers,
       })),
       summonTriggers: getCardTriggers(card, "onSummon"),
-      inspirationAfterCost: owner.inspiration,
+      inspirationBeforeSummon: owner.inspiration,
     });
     logEvent(`${owner.name} summons ${card.name}.`);
     spawnFloatingFx("Summoned", panelForOwner(ownerKey), "heal");
@@ -1426,6 +1446,7 @@ async function playCard(ownerKey, handIndex) {
   logCheshireDebug("playCard:complete", {
     ownerKey,
     card,
+    activeAuthor: owner.activeAuthor,
     inspirationAfterPlayCard: owner.inspiration,
   });
   render();
