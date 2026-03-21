@@ -38,6 +38,11 @@ export class UIScene extends Phaser.Scene {
     this.actionDock = this.add.image(0, 0, "panel-base").setTint(0x2a1f17).setAlpha(0.72);
     this.actionDockEdge = this.add.image(0, 0, "panel-edge").setAlpha(0.5);
     this.actionLink = this.add.image(0, 0, "hud-link").setAlpha(0.45);
+    this.infoDock = this.add.image(0, 0, "panel-base").setTint(0x2d2219).setAlpha(0.78);
+    this.infoDockEdge = this.add.image(0, 0, "panel-edge").setAlpha(0.56);
+    this.infoLink = this.add.image(0, 0, "hud-link").setAlpha(0.42);
+    this.utilityDock = this.add.image(0, 0, "panel-base").setTint(0x221913).setAlpha(0.62);
+    this.utilityDockEdge = this.add.image(0, 0, "panel-edge").setAlpha(0.46);
 
     this.drawBtn = new ButtonView(this, w - 208, h - 118, "DRAW", () => this.adapter.actions.draw?.());
     this.endTurnBtn = new ButtonView(this, w - 208, h - 52, "END TURN", () => this.adapter.actions.endTurn?.());
@@ -98,6 +103,11 @@ export class UIScene extends Phaser.Scene {
     this.actionDock.setDepth(1080);
     this.actionDockEdge.setDepth(1081);
     this.actionLink.setDepth(1082);
+    this.utilityDock.setDepth(1084);
+    this.utilityDockEdge.setDepth(1085);
+    this.infoDock.setDepth(1086);
+    this.infoDockEdge.setDepth(1087);
+    this.infoLink.setDepth(1088);
 
     this.turnBanner = new TurnBanner(this);
     this.quizOverlay = new QuizOverlay(this);
@@ -161,6 +171,13 @@ export class UIScene extends Phaser.Scene {
         actionEdgeSize: { w: 0, h: 0 },
         actionLinkSize: { w: 0, h: 0 },
         actionLinkOffset: 0,
+        infoDockPos: { x: 0, y: 0 },
+        infoDockSize: { w: 0, h: 0 },
+        infoEdgeSize: { w: 0, h: 0 },
+        infoLinkSize: { w: 0, h: 0 },
+        utilityDockPos: { x: 0, y: 0 },
+        utilityDockSize: { w: 0, h: 0 },
+        utilityEdgeSize: { w: 0, h: 0 },
         playerPanelScale: 0.98,
         enemyPanelScale: 0.98,
         playerPanelLayout: "phone-player",
@@ -173,6 +190,8 @@ export class UIScene extends Phaser.Scene {
         drawLabel: "DRAW",
         endTurnLabel: "END",
         showActionDock: false,
+        showInfoDock: false,
+        showUtilityDock: false,
         turnInfo: { x: 14, y: 18, size: "12px" },
         themeInfo: { x: 14, y: 34, size: "11px" },
         themeReminder: { x: 14, y: 48, size: "10px", width: Math.max(150, w * 0.26), visible: false },
@@ -182,65 +201,125 @@ export class UIScene extends Phaser.Scene {
     if (w < 1180) {
       return {
         mode: "compact",
-        enemyPanelPos: { x: w * 0.5, y: 66 },
-        playerPanelPos: { x: w * 0.2, y: h - 188 },
-        actionPos: { x: w - 146, y: h - 122 },
-        fullscreenPos: { x: w - 146, y: h - 196 },
-        drawPos: { x: w - 146, y: h - 162 },
-        endTurnPos: { x: w - 146, y: h - 88 },
-        playerDockSize: { w: 390, h: 134 },
-        enemyDockSize: { w: 600, h: 122 },
-        actionDockSize: { w: 164, h: 188 },
-        actionEdgeSize: { w: 172, h: 196 },
-        actionLinkSize: { w: 156, h: 30 },
-        actionLinkOffset: 88,
-        playerPanelScale: 0.92,
-        enemyPanelScale: 0.96,
-        playerPanelLayout: "default",
-        enemyPanelLayout: "default",
-        drawScale: 1.18,
-        endTurnScale: 1.28,
-        fullscreenScale: 1.02,
+        enemyPanelPos: { x: 188, y: 74 },
+        playerPanelPos: { x: 208, y: h - 144 },
+        actionPos: { x: w - 132, y: h - 118 },
+        fullscreenPos: { x: w - 86, y: 58 },
+        drawPos: { x: w - 132, y: h - 150 },
+        endTurnPos: { x: w - 132, y: h - 86 },
+        playerDockSize: { w: 338, h: 108 },
+        enemyDockSize: { w: 338, h: 108 },
+        actionDockSize: { w: 150, h: 164 },
+        actionEdgeSize: { w: 158, h: 172 },
+        actionLinkSize: { w: 116, h: 24 },
+        actionLinkOffset: 78,
+        infoDockPos: { x: w * 0.5, y: 82 },
+        infoDockSize: { w: Math.min(420, w * 0.4), h: 88 },
+        infoEdgeSize: { w: Math.min(428, w * 0.41), h: 96 },
+        infoLinkSize: { w: 124, h: 22 },
+        utilityDockPos: { x: w - 86, y: 58 },
+        utilityDockSize: { w: 106, h: 52 },
+        utilityEdgeSize: { w: 112, h: 58 },
+        playerPanelScale: 1,
+        enemyPanelScale: 1,
+        playerPanelLayout: "desktop",
+        enemyPanelLayout: "desktop",
+        drawScale: 1.12,
+        endTurnScale: 1.18,
+        fullscreenScale: 0.86,
         buttonLayout: "default",
         fullscreenLabel: "FULL",
         drawLabel: "DRAW",
         endTurnLabel: "END TURN",
         showActionDock: true,
-        turnInfo: { x: 46, y: 90, size: "22px" },
-        themeInfo: { x: 46, y: 120, size: "18px" },
-        themeReminder: { x: 46, y: 148, size: "14px", width: 400 },
+        showInfoDock: true,
+        showUtilityDock: true,
+        turnInfo: { x: w * 0.5 - 178, y: 64, size: "18px" },
+        themeInfo: { x: w * 0.5 - 178, y: 88, size: "16px" },
+        themeReminder: { x: w * 0.5 - 178, y: 110, size: "13px", width: 330 },
+      };
+    }
+
+    if (w < 1600) {
+      return {
+        mode: "desktop",
+        enemyPanelPos: { x: 214, y: 78 },
+        playerPanelPos: { x: 236, y: h - 132 },
+        actionPos: { x: w - 154, y: h - 122 },
+        fullscreenPos: { x: w - 92, y: 60 },
+        drawPos: { x: w - 154, y: h - 156 },
+        endTurnPos: { x: w - 154, y: h - 88 },
+        playerDockSize: { w: 368, h: 104 },
+        enemyDockSize: { w: 368, h: 104 },
+        actionDockSize: { w: 164, h: 176 },
+        actionEdgeSize: { w: 172, h: 184 },
+        actionLinkSize: { w: 132, h: 24 },
+        actionLinkOffset: 88,
+        infoDockPos: { x: w * 0.5, y: 86 },
+        infoDockSize: { w: 500, h: 96 },
+        infoEdgeSize: { w: 508, h: 104 },
+        infoLinkSize: { w: 142, h: 24 },
+        utilityDockPos: { x: w - 92, y: 60 },
+        utilityDockSize: { w: 112, h: 54 },
+        utilityEdgeSize: { w: 118, h: 60 },
+        playerPanelScale: 1,
+        enemyPanelScale: 1,
+        playerPanelLayout: "desktop",
+        enemyPanelLayout: "desktop",
+        drawScale: 1.12,
+        endTurnScale: 1.18,
+        fullscreenScale: 0.9,
+        buttonLayout: "default",
+        fullscreenLabel: "FULL",
+        drawLabel: "DRAW",
+        endTurnLabel: "END TURN",
+        showActionDock: true,
+        showInfoDock: true,
+        showUtilityDock: true,
+        turnInfo: { x: w * 0.5 - 214, y: 64, size: "19px" },
+        themeInfo: { x: w * 0.5 - 214, y: 91, size: "17px" },
+        themeReminder: { x: w * 0.5 - 214, y: 116, size: "13px", width: 408 },
       };
     }
 
     return {
-      mode: "desktop",
-      enemyPanelPos: { x: w * 0.5, y: 60 },
-      playerPanelPos: { x: w * 0.2, y: h - 178 },
-      actionPos: { x: w - 162, y: h - 118 },
-      fullscreenPos: { x: w - 162, y: h - 196 },
-      drawPos: { x: w - 162, y: h - 156 },
-      endTurnPos: { x: w - 162, y: h - 84 },
-      playerDockSize: { w: 416, h: 140 },
-      enemyDockSize: { w: 660, h: 126 },
-      actionDockSize: { w: 178, h: 196 },
-      actionEdgeSize: { w: 186, h: 206 },
-      actionLinkSize: { w: 168, h: 30 },
+      mode: "wide",
+      enemyPanelPos: { x: 236, y: 82 },
+      playerPanelPos: { x: 256, y: h - 136 },
+      actionPos: { x: w - 176, y: h - 126 },
+      fullscreenPos: { x: w - 96, y: 62 },
+      drawPos: { x: w - 176, y: h - 162 },
+      endTurnPos: { x: w - 176, y: h - 90 },
+      playerDockSize: { w: 390, h: 108 },
+      enemyDockSize: { w: 390, h: 108 },
+      actionDockSize: { w: 172, h: 184 },
+      actionEdgeSize: { w: 180, h: 194 },
+      actionLinkSize: { w: 148, h: 24 },
       actionLinkOffset: 94,
-      playerPanelScale: 0.96,
-      enemyPanelScale: 1,
-      playerPanelLayout: "default",
-      enemyPanelLayout: "default",
-      drawScale: 1.1,
-      endTurnScale: 1.18,
-      fullscreenScale: 1,
+      infoDockPos: { x: w * 0.5, y: 90 },
+      infoDockSize: { w: 580, h: 104 },
+      infoEdgeSize: { w: 588, h: 112 },
+      infoLinkSize: { w: 154, h: 24 },
+      utilityDockPos: { x: w - 96, y: 62 },
+      utilityDockSize: { w: 116, h: 56 },
+      utilityEdgeSize: { w: 124, h: 62 },
+      playerPanelScale: 1.02,
+      enemyPanelScale: 1.02,
+      playerPanelLayout: "wide",
+      enemyPanelLayout: "wide",
+      drawScale: 1.14,
+      endTurnScale: 1.2,
+      fullscreenScale: 0.92,
       buttonLayout: "default",
       fullscreenLabel: "FULL",
       drawLabel: "DRAW",
       endTurnLabel: "END TURN",
       showActionDock: true,
-      turnInfo: { x: 46, y: 94, size: "24px" },
-      themeInfo: { x: 46, y: 124, size: "19px" },
-      themeReminder: { x: 46, y: 152, size: "15px", width: 470 },
+      showInfoDock: true,
+      showUtilityDock: true,
+      turnInfo: { x: w * 0.5 - 252, y: 66, size: "20px" },
+      themeInfo: { x: w * 0.5 - 252, y: 94, size: "18px" },
+      themeReminder: { x: w * 0.5 - 252, y: 120, size: "14px", width: 468 },
     };
   }
 
@@ -272,6 +351,23 @@ export class UIScene extends Phaser.Scene {
     this.actionDock.setAlpha(profile.showActionDock ? 0.72 : 0);
     this.actionDockEdge.setAlpha(profile.showActionDock ? 0.5 : 0);
     this.actionLink.setAlpha(profile.showActionDock ? 0.45 : 0);
+
+    this.infoDock.setPosition(profile.infoDockPos.x, profile.infoDockPos.y);
+    this.infoDock.setDisplaySize(profile.infoDockSize.w, profile.infoDockSize.h);
+    this.infoDockEdge.setPosition(profile.infoDockPos.x, profile.infoDockPos.y);
+    this.infoDockEdge.setDisplaySize(profile.infoEdgeSize.w, profile.infoEdgeSize.h);
+    this.infoLink.setPosition(profile.infoDockPos.x, profile.infoDockPos.y + profile.infoDockSize.h * 0.42);
+    this.infoLink.setDisplaySize(profile.infoLinkSize.w, profile.infoLinkSize.h);
+    this.infoDock.setAlpha(profile.showInfoDock ? 0.78 : 0);
+    this.infoDockEdge.setAlpha(profile.showInfoDock ? 0.56 : 0);
+    this.infoLink.setAlpha(profile.showInfoDock ? 0.42 : 0);
+
+    this.utilityDock.setPosition(profile.utilityDockPos.x, profile.utilityDockPos.y);
+    this.utilityDock.setDisplaySize(profile.utilityDockSize.w, profile.utilityDockSize.h);
+    this.utilityDockEdge.setPosition(profile.utilityDockPos.x, profile.utilityDockPos.y);
+    this.utilityDockEdge.setDisplaySize(profile.utilityEdgeSize.w, profile.utilityEdgeSize.h);
+    this.utilityDock.setAlpha(profile.showUtilityDock ? 0.62 : 0);
+    this.utilityDockEdge.setAlpha(profile.showUtilityDock ? 0.46 : 0);
 
     this.playerPanel.setPosition(profile.playerPanelPos.x, profile.playerPanelPos.y);
     this.enemyPanel.setPosition(profile.enemyPanelPos.x, profile.enemyPanelPos.y);
@@ -341,10 +437,10 @@ export class UIScene extends Phaser.Scene {
       this.themeInfo.setText(this.current.themeLabel || "Theme");
       this.themeReminder.setText("");
     } else {
-      this.turnInfo.setText(`Turn ${this.current.turn}  -  ${this.current.currentPlayer === "player" ? "Your Main Phase" : "Enemy Action"}`);
+      this.turnInfo.setText(`${this.current.currentPlayer === "player" ? "YOUR TURN" : "ENEMY TURN"}  -  TURN ${this.current.turn}`);
       this.themeInfo.setText(this.current.themeLabel || "Theme");
       this.themeReminder.setText(
-        `${this.current.themeDescription || ""} ${this.current.themeRewardText || ""}`.trim()
+        `${this.current.themeDescription || ""}  ${this.current.themeRewardText || ""}`.trim()
       );
     }
 

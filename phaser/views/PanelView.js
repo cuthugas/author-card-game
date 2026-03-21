@@ -85,6 +85,10 @@ export class PanelView extends Phaser.GameObjects.Container {
       this.title.setText("YOU");
       this.primary.setText(`HP ${data.reputation}   IN ${data.inspiration}/${data.maxInspiration}`);
       this.secondary.setText("");
+    } else if (this.layoutMode === "desktop" || this.layoutMode === "wide") {
+      this.title.setText(`${data.name}  -  ${data.author}`);
+      this.primary.setText(`HP ${data.reputation}   IN ${data.inspiration}/${data.maxInspiration}`);
+      this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin}   DECK ${data.deckCount}   HAND ${data.handCount}`);
     } else {
       this.title.setText(`${data.name} - ${data.author}`);
     }
@@ -92,7 +96,7 @@ export class PanelView extends Phaser.GameObjects.Container {
       this.title.setText("");
       this.primary.setText(`HP ${data.reputation}`);
       this.secondary.setText("");
-    } else if (this.layoutMode !== "phone-player") {
+    } else if (this.layoutMode !== "phone-player" && this.layoutMode !== "desktop" && this.layoutMode !== "wide") {
       this.primary.setText(`REP ${data.reputation}   INSP ${data.inspiration}/${data.maxInspiration}`);
       this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin}   DECK ${data.deckCount}   HAND ${data.handCount}`);
     }
@@ -117,26 +121,32 @@ export class PanelView extends Phaser.GameObjects.Container {
     this.layoutMode = mode;
     const compact = mode === "phone";
     const playerCompact = mode === "phone-player";
+    const desktop = mode === "desktop";
+    const wide = mode === "wide";
+    const desktopLike = desktop || wide;
 
-    this.shadow.setSize(playerCompact ? 166 : compact ? 148 : 398, playerCompact ? 34 : compact ? 32 : 108).setPosition(0, playerCompact ? 2 : compact ? 2 : 8);
-    this.bg.setDisplaySize(playerCompact ? 162 : compact ? 144 : 396, playerCompact ? 36 : compact ? 34 : 112);
-    this.edge.setDisplaySize(playerCompact ? 168 : compact ? 150 : 402, playerCompact ? 42 : compact ? 40 : 118);
+    this.shadow.setSize(
+      playerCompact ? 166 : compact ? 148 : desktop ? 356 : wide ? 382 : 398,
+      playerCompact ? 34 : compact ? 32 : desktopLike ? 88 : 108
+    ).setPosition(0, playerCompact ? 2 : compact ? 2 : desktopLike ? 6 : 8);
+    this.bg.setDisplaySize(playerCompact ? 162 : compact ? 144 : desktop ? 352 : wide ? 378 : 396, playerCompact ? 36 : compact ? 34 : desktopLike ? 92 : 112);
+    this.edge.setDisplaySize(playerCompact ? 168 : compact ? 150 : desktop ? 358 : wide ? 384 : 402, playerCompact ? 42 : compact ? 40 : desktopLike ? 98 : 118);
     this.link
-      .setPosition(0, this.side === "player" ? (playerCompact ? -17 : compact ? 20 : -66) : playerCompact ? 17 : compact ? 20 : 66)
-      .setDisplaySize(playerCompact ? 76 : compact ? 84 : 260, playerCompact ? 8 : compact ? 10 : 34)
-      .setAlpha(playerCompact || compact ? 0 : 0.52);
-    this.topShine.setSize(playerCompact ? 122 : compact ? 112 : 332, playerCompact ? 5 : compact ? 4 : 18).setPosition(0, playerCompact ? -13 : compact ? -11 : -42);
-    this.title.setPosition(playerCompact ? -70 : compact ? -62 : -176, playerCompact ? -7 : compact ? -8 : -37).setFontSize(playerCompact ? "9px" : compact ? "10px" : "22px");
-    this.primary.setPosition(playerCompact ? -70 : compact ? -62 : -176, playerCompact ? 6 : compact ? 0 : -4).setFontSize(playerCompact ? "11px" : compact ? "10px" : "19px");
-    this.secondary.setPosition(playerCompact ? -70 : compact ? 42 : -176, playerCompact ? 17 : compact ? 5 : 26).setFontSize(playerCompact ? "9px" : compact ? "9px" : "17px");
-    this.turnGlow.setPosition(playerCompact ? 54 : compact ? 50 : 146, playerCompact ? 4 : compact ? 0 : -2).setDisplaySize(playerCompact ? 42 : compact ? 32 : 146, playerCompact ? 22 : compact ? 18 : 92);
-    this.orb.setPosition(playerCompact ? 66 : compact ? 58 : 168,  playerCompact ? 4 : compact ? 0 : -1).setRadius(playerCompact ? 4 : compact ? 3 : 10);
-    this.targetRing.setDisplaySize(playerCompact ? 178 : compact ? 160 : 426, playerCompact ? 52 : compact ? 46 : 136);
+      .setPosition(0, this.side === "player" ? (playerCompact ? -17 : compact ? 20 : desktopLike ? -48 : -66) : playerCompact ? 17 : compact ? 20 : desktopLike ? 48 : 66)
+      .setDisplaySize(playerCompact ? 76 : compact ? 84 : desktop ? 188 : wide ? 214 : 260, playerCompact ? 8 : compact ? 10 : desktopLike ? 24 : 34)
+      .setAlpha(playerCompact || compact ? 0 : desktopLike ? 0.4 : 0.52);
+    this.topShine.setSize(playerCompact ? 122 : compact ? 112 : desktop ? 286 : wide ? 314 : 332, playerCompact ? 5 : compact ? 4 : desktopLike ? 12 : 18).setPosition(0, playerCompact ? -13 : compact ? -11 : desktopLike ? -31 : -42);
+    this.title.setPosition(playerCompact ? -70 : compact ? -62 : desktop ? -150 : wide ? -160 : -176, playerCompact ? -7 : compact ? -8 : desktopLike ? -21 : -37).setFontSize(playerCompact ? "9px" : compact ? "10px" : desktop ? "16px" : wide ? "17px" : "22px");
+    this.primary.setPosition(playerCompact ? -70 : compact ? -62 : desktop ? -150 : wide ? -160 : -176, playerCompact ? 6 : compact ? 0 : desktopLike ? 3 : -4).setFontSize(playerCompact ? "11px" : compact ? "10px" : desktop ? "20px" : wide ? "21px" : "19px");
+    this.secondary.setPosition(playerCompact ? -70 : compact ? 42 : desktop ? -150 : wide ? -160 : -176, playerCompact ? 17 : compact ? 5 : desktopLike ? 24 : 26).setFontSize(playerCompact ? "9px" : compact ? "9px" : desktopLike ? "13px" : "17px");
+    this.turnGlow.setPosition(playerCompact ? 54 : compact ? 50 : desktop ? 118 : wide ? 126 : 146, playerCompact ? 4 : compact ? 0 : desktopLike ? 2 : -2).setDisplaySize(playerCompact ? 42 : compact ? 32 : desktop ? 104 : wide ? 112 : 146, playerCompact ? 22 : compact ? 18 : desktopLike ? 60 : 92);
+    this.orb.setPosition(playerCompact ? 66 : compact ? 58 : desktop ? 136 : wide ? 146 : 168,  playerCompact ? 4 : compact ? 0 : desktopLike ? 2 : -1).setRadius(playerCompact ? 4 : compact ? 3 : desktopLike ? 8 : 10);
+    this.targetRing.setDisplaySize(playerCompact ? 178 : compact ? 160 : desktop ? 382 : wide ? 406 : 426, playerCompact ? 52 : compact ? 46 : desktopLike ? 112 : 136);
     this.targetHint
-      .setPosition(0, this.side === "ai" ? (playerCompact ? 15 : compact ? 18 : 44) : playerCompact ? -15 : compact ? -18 : -44)
-      .setFontSize(playerCompact ? "8px" : compact ? "8px" : "15px");
+      .setPosition(0, this.side === "ai" ? (playerCompact ? 15 : compact ? 18 : desktopLike ? 34 : 44) : playerCompact ? -15 : compact ? -18 : desktopLike ? -34 : -44)
+      .setFontSize(playerCompact ? "8px" : compact ? "8px" : desktopLike ? "13px" : "15px");
     this.title.setVisible(!compact || playerCompact);
-    this.setSize(playerCompact ? 170 : compact ? 152 : 410, playerCompact ? 40 : compact ? 36 : 120);
+    this.setSize(playerCompact ? 170 : compact ? 152 : desktop ? 364 : wide ? 390 : 410, playerCompact ? 40 : compact ? 36 : desktopLike ? 98 : 120);
   }
 
   flashPrimary(color = "#fff0ca") {

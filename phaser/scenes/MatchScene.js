@@ -81,73 +81,123 @@ export class MatchScene extends Phaser.Scene {
         handAngle: 8,
         handAngleStep: 2.8,
         handLiftStep: 1.1,
+        handMinSpread: 44,
         handMaxSpread: 100,
+        handEdgeScaleBoost: 0.08,
+        handCenterScaleBase: 0.88,
         slotInset: Math.max(78, w * 0.13),
         slotBend: 8,
         slotWidth: 108,
         slotHeight: 72,
+        playWidthRatio: 0.9,
+        playWidthMax: w * 0.9,
       };
     }
     if (w < 1020) {
       return {
         mode: "compact",
         cardLayout: "default",
-        handScale: 0.98,
+        handScale: 1.02,
         boardScale: 0.68,
-        boardCenterRatio: 0.47,
-        enemyLaneRatio: 0.315,
-        playerLaneRatio: 0.575,
-        handShelfRatio: 0.87,
-        handBaseY: this.scale.height - 96,
-        handSidePadding: Math.max(96, w * 0.16),
-        handAngle: 14,
-        handAngleStep: 4,
-        handLiftStep: 2.4,
+        boardCenterRatio: 0.485,
+        enemyLaneRatio: 0.335,
+        playerLaneRatio: 0.595,
+        handShelfRatio: 0.845,
+        handBaseY: this.scale.height - 88,
+        handSidePadding: Math.max(92, w * 0.14),
+        handAngle: 12,
+        handAngleStep: 3.4,
+        handLiftStep: 2.2,
+        handMinSpread: 58,
+        handMaxSpread: 128,
+        handEdgeScaleBoost: 0.1,
+        handCenterScaleBase: 0.92,
         slotInset: Math.max(84, w * 0.13),
         slotBend: 14,
         slotWidth: 124,
         slotHeight: 82,
+        playWidthRatio: 0.8,
+        playWidthMax: 920,
       };
     }
     if (w < 1320) {
       return {
         mode: "medium",
         cardLayout: "default",
-        handScale: 0.94,
-        boardScale: 0.7,
-        boardCenterRatio: 0.47,
-        enemyLaneRatio: 0.315,
-        playerLaneRatio: 0.575,
-        handShelfRatio: 0.87,
-        handBaseY: this.scale.height - 98,
-        handSidePadding: Math.max(110, w * 0.15),
-        handAngle: 16,
-        handAngleStep: 4.6,
-        handLiftStep: 2.8,
-        slotInset: Math.max(108, w * 0.14),
-        slotBend: 16,
+        handScale: 1.08,
+        boardScale: 0.72,
+        boardCenterRatio: 0.49,
+        enemyLaneRatio: 0.35,
+        playerLaneRatio: 0.605,
+        handShelfRatio: 0.84,
+        handBaseY: this.scale.height - 92,
+        handSidePadding: Math.max(132, w * 0.16),
+        handAngle: 14,
+        handAngleStep: 3.8,
+        handLiftStep: 3,
+        handMinSpread: 70,
+        handMaxSpread: 144,
+        handEdgeScaleBoost: 0.12,
+        handCenterScaleBase: 0.94,
+        slotInset: Math.max(132, w * 0.16),
+        slotBend: 14,
         slotWidth: 132,
         slotHeight: 88,
+        playWidthRatio: 0.76,
+        playWidthMax: 1040,
+      };
+    }
+    if (w < 1680) {
+      return {
+        mode: "desktop",
+        cardLayout: "default",
+        handScale: 1.14,
+        boardScale: 0.74,
+        boardCenterRatio: 0.5,
+        enemyLaneRatio: 0.355,
+        playerLaneRatio: 0.61,
+        handShelfRatio: 0.835,
+        handBaseY: this.scale.height - 94,
+        handSidePadding: Math.max(156, w * 0.17),
+        handAngle: 14,
+        handAngleStep: 3.6,
+        handLiftStep: 3.6,
+        handMinSpread: 76,
+        handMaxSpread: 154,
+        handEdgeScaleBoost: 0.12,
+        handCenterScaleBase: 0.95,
+        slotInset: Math.max(156, w * 0.17),
+        slotBend: 12,
+        slotWidth: 136,
+        slotHeight: 90,
+        playWidthRatio: 0.72,
+        playWidthMax: 1180,
       };
     }
     return {
-      mode: "desktop",
+      mode: "wide",
       cardLayout: "default",
-      handScale: 0.9,
-      boardScale: 0.72,
-      boardCenterRatio: 0.47,
-      enemyLaneRatio: 0.315,
-      playerLaneRatio: 0.575,
-      handShelfRatio: 0.87,
-      handBaseY: this.scale.height - 102,
-      handSidePadding: Math.max(124, w * 0.14),
-      handAngle: 18,
-      handAngleStep: 5.2,
-      handLiftStep: 3.1,
-      slotInset: Math.max(120, w * 0.14),
-      slotBend: 18,
+      handScale: 1.2,
+      boardScale: 0.76,
+      boardCenterRatio: 0.505,
+      enemyLaneRatio: 0.36,
+      playerLaneRatio: 0.615,
+      handShelfRatio: 0.83,
+      handBaseY: this.scale.height - 96,
+      handSidePadding: Math.max(190, w * 0.18),
+      handAngle: 12,
+      handAngleStep: 3.1,
+      handLiftStep: 3.4,
+      handMinSpread: 88,
+      handMaxSpread: 168,
+      handEdgeScaleBoost: 0.14,
+      handCenterScaleBase: 0.96,
+      slotInset: Math.max(180, w * 0.18),
+      slotBend: 12,
       slotWidth: 136,
       slotHeight: 90,
+      playWidthRatio: 0.68,
+      playWidthMax: 1320,
     };
   }
 
@@ -159,6 +209,7 @@ export class MatchScene extends Phaser.Scene {
     const h = this.scale.height;
     const profile = this.getProfile();
     const isPhone = profile.mode === "phone";
+    const playWidth = Math.min(w * profile.playWidthRatio, profile.playWidthMax);
     const boardCenterY = h * profile.boardCenterRatio;
     const enemyLaneY = h * profile.enemyLaneRatio;
     const playerLaneY = h * profile.playerLaneRatio;
@@ -177,36 +228,38 @@ export class MatchScene extends Phaser.Scene {
       farForest.fillTriangle(x - 80, h * 0.44, x + 28, h * 0.18, x + 132, h * 0.44);
     }
 
-    const boardTable = this.add.image(w * 0.5, boardCenterY, "panel-base").setDisplaySize(w * 0.9, h * (isPhone ? 0.5 : 0.56)).setTint(0x60452d, 0x3d2b1d, 0x271c13, 0x513825);
-    const boardEdge = this.add.image(w * 0.5, boardCenterY, "panel-edge").setDisplaySize(w * 0.904, h * (isPhone ? 0.51 : 0.568)).setAlpha(0.76);
-    const boardFrameInner = this.add.image(w * 0.5, boardCenterY, "panel-edge").setDisplaySize(w * 0.84, h * (isPhone ? 0.42 : 0.49)).setAlpha(0.28);
+    const boardTableWidth = Math.min(w * (isPhone ? 0.9 : 0.88), playWidth + (isPhone ? 120 : 220));
+    const boardTable = this.add.image(w * 0.5, boardCenterY, "panel-base").setDisplaySize(boardTableWidth, h * (isPhone ? 0.5 : 0.54)).setTint(0x60452d, 0x3d2b1d, 0x271c13, 0x513825);
+    const boardEdge = this.add.image(w * 0.5, boardCenterY, "panel-edge").setDisplaySize(boardTableWidth + (isPhone ? 8 : 10), h * (isPhone ? 0.51 : 0.548)).setAlpha(0.76);
+    const boardFrameInner = this.add.image(w * 0.5, boardCenterY, "panel-edge").setDisplaySize(playWidth + (isPhone ? 36 : 78), h * (isPhone ? 0.42 : 0.46)).setAlpha(0.28);
 
-    this.enemyLaneGlow = this.add.image(w * 0.5, enemyLaneY, "lane-pulse").setDisplaySize(w * 0.74, h * (isPhone ? 0.15 : 0.24)).setAlpha(0.1);
-    this.playerLaneGlow = this.add.image(w * 0.5, playerLaneY, "lane-pulse").setDisplaySize(w * 0.74, h * (isPhone ? 0.18 : 0.26)).setAlpha(0.14);
+    this.enemyLaneGlow = this.add.image(w * 0.5, enemyLaneY, "lane-pulse").setDisplaySize(playWidth * 0.98, h * (isPhone ? 0.15 : 0.2)).setAlpha(0.1);
+    this.playerLaneGlow = this.add.image(w * 0.5, playerLaneY, "lane-pulse").setDisplaySize(playWidth * 0.98, h * (isPhone ? 0.18 : 0.21)).setAlpha(0.14);
 
-    const enemyInlay = this.add.image(w * 0.5, enemyLaneY, "panel-edge").setDisplaySize(w * 0.76, h * (isPhone ? 0.1 : 0.16)).setAlpha(0.22);
-    const playerInlay = this.add.image(w * 0.5, playerLaneY, "panel-edge").setDisplaySize(w * 0.76, h * (isPhone ? 0.12 : 0.18)).setAlpha(0.24);
-    const enemyLaneBar = this.add.rectangle(w * 0.5, enemyLaneY, w * 0.72, h * (isPhone ? 0.07 : 0.115), 0x13181b, 0.34);
-    const playerLaneBar = this.add.rectangle(w * 0.5, playerLaneY, w * 0.72, h * (isPhone ? 0.085 : 0.125), 0x111519, 0.36);
+    const enemyInlay = this.add.image(w * 0.5, enemyLaneY, "panel-edge").setDisplaySize(playWidth, h * (isPhone ? 0.1 : 0.13)).setAlpha(0.22);
+    const playerInlay = this.add.image(w * 0.5, playerLaneY, "panel-edge").setDisplaySize(playWidth, h * (isPhone ? 0.12 : 0.145)).setAlpha(0.24);
+    const enemyLaneBar = this.add.rectangle(w * 0.5, enemyLaneY, playWidth * 0.96, h * (isPhone ? 0.07 : 0.095), 0x13181b, 0.34);
+    const playerLaneBar = this.add.rectangle(w * 0.5, playerLaneY, playWidth * 0.96, h * (isPhone ? 0.085 : 0.104), 0x111519, 0.36);
 
-    this.centerSigil = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "center-sigil").setDisplaySize(w * 0.52, h * 0.22).setAlpha(0.74);
-    this.centerSigilGlow = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "lane-pulse").setDisplaySize(w * 0.38, h * 0.12).setAlpha(0.12);
-    const centerSpine = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "hud-link").setDisplaySize(w * 0.44, h * 0.06).setAlpha(0.52);
+    this.centerSigil = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "center-sigil").setDisplaySize(playWidth * 0.66, h * 0.22).setAlpha(0.74);
+    this.centerSigilGlow = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "lane-pulse").setDisplaySize(playWidth * 0.48, h * 0.12).setAlpha(0.12);
+    const centerSpine = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "hud-link").setDisplaySize(playWidth * 0.56, h * 0.06).setAlpha(0.52);
     const centerSpineV = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "hud-link").setDisplaySize(h * 0.14, h * 0.06).setAngle(90).setAlpha(0.4);
 
-    const divider = this.add.rectangle(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), w * 0.66, 2, 0xdab06e, 0.34);
-    const dividerGlow = this.add.rectangle(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), w * 0.7, 18, 0xd59e54, 0.09);
+    const divider = this.add.rectangle(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), playWidth * 0.8, 2, 0xdab06e, 0.34);
+    const dividerGlow = this.add.rectangle(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), playWidth * 0.84, 18, 0xd59e54, 0.09);
 
     const foregroundFog = this.add.tileSprite(w * 0.5, h * 0.78, w * 1.1, h * 0.32, "particle-fog").setAlpha(0.14);
     this.tweens.add({ targets: foregroundFog, tilePositionX: 80, duration: 26000, repeat: -1 });
 
     const upperFocus = this.add.image(w * 0.5, boardCenterY - h * 0.02, "lane-pulse").setDisplaySize(w * 0.52, h * (isPhone ? 0.24 : 0.34)).setAlpha(0.2);
-    this.handFocus = this.add.image(w * 0.5, handShelfY - h * 0.005, "lane-pulse").setDisplaySize(w * 0.64, h * (isPhone ? 0.18 : 0.28)).setAlpha(0.36);
-    const handShelf = this.add.image(w * 0.5, handShelfY, "panel-edge").setDisplaySize(w * 0.62, h * (isPhone ? 0.08 : 0.14)).setAlpha(0.24);
+    this.handFocus = this.add.image(w * 0.5, handShelfY - h * 0.005, "lane-pulse").setDisplaySize(playWidth * 0.92, h * (isPhone ? 0.18 : 0.22)).setAlpha(0.36);
+    const handShelf = this.add.image(w * 0.5, handShelfY, "panel-edge").setDisplaySize(playWidth * 0.88, h * (isPhone ? 0.08 : 0.11)).setAlpha(0.24);
     const vignette = this.add.image(w * 0.5, h * 0.5, "vignette").setDisplaySize(w, h).setAlpha(0.7);
 
-    this.playerDeckPos = { x: profile.slotInset, y: isPhone ? h * 0.72 : h * 0.78 };
-    this.enemyDeckPos = { x: w - profile.slotInset, y: isPhone ? h * 0.14 : h * 0.13 };
+    const playEdgeOffset = playWidth * 0.5 + (isPhone ? 0 : 82);
+    this.playerDeckPos = { x: w * 0.5 - playEdgeOffset, y: isPhone ? h * 0.72 : h * 0.77 };
+    this.enemyDeckPos = { x: w * 0.5 + playEdgeOffset, y: isPhone ? h * 0.14 : h * 0.145 };
     this.playerDeck = this.add.image(this.playerDeckPos.x, this.playerDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAlpha(isPhone ? 0 : 0.9);
     this.enemyDeck = this.add.image(this.enemyDeckPos.x, this.enemyDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAngle(180).setAlpha(isPhone ? 0 : 0.86);
     this.playerDeck.setVisible(!isPhone);
@@ -246,13 +299,15 @@ export class MatchScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
     const profile = this.getProfile();
+    const playWidth = Math.min(w * profile.playWidthRatio, profile.playWidthMax);
     const slots = 7;
     this.slotAnchors = { player: [], ai: [] };
     this.slotSprites = { player: [], ai: [] };
+    const startX = w * 0.5 - playWidth * 0.5;
 
     for (let i = 0; i < slots; i += 1) {
       const t = i / (slots - 1);
-      const x = profile.slotInset + (w - profile.slotInset * 2) * t;
+      const x = startX + playWidth * t;
       const bend = Math.cos((t - 0.5) * Math.PI) * profile.slotBend;
 
       const enemyY = h * profile.enemyLaneRatio - bend * 0.45;
@@ -452,10 +507,13 @@ export class MatchScene extends Phaser.Scene {
       height: this.scale.height,
       baseY: profile.handBaseY,
       sidePadding: profile.handSidePadding,
+      minSpread: profile.handMinSpread,
       maxAngle: profile.handAngle,
       angleStep: profile.handAngleStep,
       liftStep: profile.handLiftStep,
       maxSpread: profile.handMaxSpread,
+      edgeScaleBoost: profile.handEdgeScaleBoost,
+      centerScaleBase: profile.handCenterScaleBase,
     });
     cards.forEach((card, index) => {
       const fan = fanTargets[index];
@@ -496,7 +554,7 @@ export class MatchScene extends Phaser.Scene {
         x: fan.x,
         y: fan.y,
         angle: fan.angle,
-        scale: profile.handScale,
+        scale: profile.handScale * (fan.scale ?? 1),
         depth: fan.depth,
       };
 
