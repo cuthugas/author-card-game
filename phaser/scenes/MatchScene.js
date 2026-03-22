@@ -25,9 +25,10 @@ export class MatchScene extends Phaser.Scene {
     this.slotLayer = this.add.container(0, 0);
     this.boardLayer = this.add.container(0, 0);
     this.handLayer = this.add.container(0, 0);
+    this.inspectLayer = this.add.container(0, 0);
     this.fxLayer = this.add.container(0, 0);
 
-    this.root.add([this.bgLayer, this.slotLayer, this.boardLayer, this.handLayer, this.fxLayer]);
+    this.root.add([this.bgLayer, this.slotLayer, this.boardLayer, this.handLayer, this.inspectLayer, this.fxLayer]);
 
     this.handFan = new HandFan(this, this.handLayer);
     this.cardDetailOverlay = new CardDetailOverlay(this);
@@ -102,8 +103,8 @@ export class MatchScene extends Phaser.Scene {
         boardCenterRatio: 0.485,
         enemyLaneRatio: 0.335,
         playerLaneRatio: 0.595,
-        handShelfRatio: 0.845,
-        handBaseY: this.scale.height - 88,
+        handShelfRatio: 0.83,
+        handBaseY: this.scale.height - 118,
         handSidePadding: Math.max(92, w * 0.14),
         handAngle: 12,
         handAngleStep: 3.4,
@@ -129,8 +130,8 @@ export class MatchScene extends Phaser.Scene {
         boardCenterRatio: 0.49,
         enemyLaneRatio: 0.35,
         playerLaneRatio: 0.605,
-        handShelfRatio: 0.84,
-        handBaseY: this.scale.height - 92,
+        handShelfRatio: 0.82,
+        handBaseY: this.scale.height - 124,
         handSidePadding: Math.max(132, w * 0.16),
         handAngle: 14,
         handAngleStep: 3.8,
@@ -156,8 +157,8 @@ export class MatchScene extends Phaser.Scene {
         boardCenterRatio: 0.5,
         enemyLaneRatio: 0.355,
         playerLaneRatio: 0.61,
-        handShelfRatio: 0.835,
-        handBaseY: this.scale.height - 94,
+        handShelfRatio: 0.812,
+        handBaseY: this.scale.height - 132,
         handSidePadding: Math.max(156, w * 0.17),
         handAngle: 14,
         handAngleStep: 3.6,
@@ -182,8 +183,8 @@ export class MatchScene extends Phaser.Scene {
       boardCenterRatio: 0.505,
       enemyLaneRatio: 0.36,
       playerLaneRatio: 0.615,
-      handShelfRatio: 0.83,
-      handBaseY: this.scale.height - 96,
+      handShelfRatio: 0.805,
+      handBaseY: this.scale.height - 140,
       handSidePadding: Math.max(190, w * 0.18),
       handAngle: 12,
       handAngleStep: 3.1,
@@ -334,7 +335,12 @@ export class MatchScene extends Phaser.Scene {
   }
 
   recordPosition(uid, view) {
-    this.lastKnownPos.set(uid, { x: view.x, y: view.y });
+    if (!view) return;
+    const target = view.layoutTarget;
+    this.lastKnownPos.set(uid, {
+      x: target?.x ?? view.x,
+      y: target?.y ?? view.y,
+    });
   }
 
   createView(card, config) {
@@ -361,6 +367,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   moveTo(view, target, opts = {}) {
+    view.layoutTarget = { ...target };
+    view.layoutDomain = opts.domain || view.layoutDomain || "free";
+    const domain = view.layoutDomain;
+    view.layoutRevision = (view.layoutRevision || 0) + 1;
+    const revision = view.layoutRevision;
+    if (view.inspectRaised) {
+      return;
+    }
     this.tweens.killTweensOf(view);
     if (view.shadow) this.tweens.killTweensOf(view.shadow);
     if (opts.movingDepth !== undefined) view.setDepth(opts.movingDepth);
@@ -374,14 +388,16 @@ export class MatchScene extends Phaser.Scene {
       duration: opts.duration ?? 230,
       ease: opts.ease ?? "Quad.Out",
       onComplete: () => {
-        this.finalizeViewTransform(view, target);
+        this.finalizeViewTransform(view, target, revision, domain);
         opts.onComplete?.();
       },
     });
   }
 
-  finalizeViewTransform(view, target) {
+  finalizeViewTransform(view, target, revision = null, domain = null) {
     if (!view || !target) return;
+    if (revision !== null && view.layoutRevision !== revision) return;
+    if (domain !== null && view.layoutDomain !== domain) return;
     view.setPosition(target.x ?? view.x, target.y ?? view.y);
     view.setAngle(target.angle ?? view.angle);
     if (target.scale !== undefined) {
@@ -393,6 +409,39 @@ export class MatchScene extends Phaser.Scene {
     view.setHomeTransform();
     this.boardLayer.sort("depth");
     this.handLayer.sort("depth");
+    this.inspectLayer.sort("depth");
+  }
+
+  liftViewForInspect(view) {
+    if (!view || view.parentContainer === this.inspectLayer) return;
+    const parent = view.parentContainer;
+    if (!parent) return;
+    view.inspectParentContainer = parent;
+    view.inspectParentIndex = typeof parent.getIndex === "function" ? parent.getIndex(view) : null;
+    parent.remove(view);
+    this.inspectLayer.add(view);
+  }
+
+  restoreViewFromInspect(view) {
+    if (!view || view.parentContainer !== this.inspectLayer) return;
+    const parent = view.inspectParentContainer;
+    this.inspectLayer.remove(view);
+    if (parent) {
+      const index = view.inspectParentIndex;
+      const childCount = Array.isArray(parent.list) ? parent.list.length : (typeof parent.length === "number" ? parent.length : 0);
+      if (typeof index === "number" && typeof parent.addAt === "function") {
+        parent.addAt(view, Math.min(index, childCount));
+      } else {
+        parent.add(view);
+      }
+    } else {
+      this.boardLayer.add(view);
+    }
+    view.inspectParentContainer = null;
+    view.inspectParentIndex = null;
+    this.boardLayer.sort("depth");
+    this.handLayer.sort("depth");
+    this.inspectLayer.sort("depth");
   }
 
   getSlotTargets(side, count) {
@@ -410,7 +459,19 @@ export class MatchScene extends Phaser.Scene {
     for (const [uid, view] of map.entries()) {
       if (desired.has(uid)) continue;
       map.delete(uid);
-      this.recordPosition(uid, view);
+      const lastTarget = view.layoutTarget ? { ...view.layoutTarget } : null;
+      view.layoutRevision = (view.layoutRevision || 0) + 1;
+      view.layoutDomain = null;
+      view.layoutTarget = null;
+      this.tweens.killTweensOf(view);
+      if (view.shadow) this.tweens.killTweensOf(view.shadow);
+      view.clearHoverTweens?.();
+      view.forceEndInspect?.();
+      if (lastTarget) {
+        this.lastKnownPos.set(uid, { x: lastTarget.x, y: lastTarget.y });
+      } else {
+        this.recordPosition(uid, view);
+      }
       view.animateOut(() => view.destroy());
     }
 
@@ -428,7 +489,13 @@ export class MatchScene extends Phaser.Scene {
 
       let view = map.get(card.uid);
       const prevZone = this.prevZones.get(card.uid);
-      const fromPos = this.lastKnownPos.get(card.uid);
+      const sourceHandView = prevZone === "hand" ? this.handViews.get(card.uid) : null;
+      const handOrigin = sourceHandView?.layoutTarget
+        ? { x: sourceHandView.layoutTarget.x, y: sourceHandView.layoutTarget.y }
+        : sourceHandView
+          ? { x: sourceHandView.x, y: sourceHandView.y }
+          : null;
+      const fromPos = handOrigin || this.lastKnownPos.get(card.uid);
 
       if (!view) {
         view = this.createView(card, {
@@ -436,7 +503,16 @@ export class MatchScene extends Phaser.Scene {
           disableHover: isEnemy,
           layoutMode: profile.cardLayout,
           onClick: () => {
-            if (this.viewState.winner || this.viewState.pendingQuiz || this.viewState.currentPlayer !== "player") return;
+            if (
+              this.viewState.winner ||
+              this.viewState.pendingQuiz ||
+              this.viewState.pendingHandDiscard ||
+              this.viewState.currentPlayer !== "player"
+            ) return;
+            if (this.viewState.pendingTarget?.effect === "swing_target_character_turn" && card.type === "character") {
+              this.adapter.actions.resolveCardTarget?.(card.uid);
+              return;
+            }
             if (!isEnemy) {
               this.adapter.actions.selectAttacker?.(card.uid);
               return;
@@ -446,8 +522,8 @@ export class MatchScene extends Phaser.Scene {
         });
 
         let origin;
-        if (prevZone === "hand" && fromPos) {
-          origin = fromPos;
+        if (prevZone === "hand" && handOrigin) {
+          origin = handOrigin;
         } else if (fromPos) {
           origin = fromPos;
         } else if (side === "ai" && profile.mode === "phone") {
@@ -470,10 +546,23 @@ export class MatchScene extends Phaser.Scene {
       view.setLayout(profile.cardLayout);
       view.updateData(card);
       view.alpha = card.exhausted ? 0.68 : 1;
-      view.setSelected(!isEnemy && this.viewState.selectedAttackerUid === card.uid);
-      view.setTargetable(Boolean(isEnemy && this.viewState.currentPlayer === "player" && !this.viewState.winner && !this.viewState.pendingQuiz && this.viewState.selectedAttackerUid));
+      const discardMode = Boolean(this.viewState.pendingHandDiscard);
+      const pendingTargeting = Boolean(this.viewState.pendingTarget?.effect === "swing_target_character_turn");
+      const canUseAsCardTarget =
+        pendingTargeting &&
+        this.viewState.currentPlayer === "player" &&
+        !this.viewState.winner &&
+        !this.viewState.pendingQuiz &&
+        !discardMode &&
+        card.type === "character";
+      view.setSelected(!discardMode && !pendingTargeting && !isEnemy && this.viewState.selectedAttackerUid === card.uid);
+      view.setTargetable(
+        canUseAsCardTarget ||
+        Boolean(isEnemy && this.viewState.currentPlayer === "player" && !this.viewState.winner && !this.viewState.pendingQuiz && !discardMode && !pendingTargeting && this.viewState.selectedAttackerUid)
+      );
 
       this.moveTo(view, targetTransform, {
+        domain: side === "ai" ? "ai-board" : "player-board",
         duration: prevZone === "hand" ? 270 : 210,
         ease: side === "ai" && profile.mode === "phone" && !fromPos ? "Cubic.Out" : prevZone === "hand" ? "Cubic.Out" : "Quad.Out",
         movingDepth: side === "ai" && profile.mode === "phone" ? 118 + index : undefined,
@@ -489,7 +578,18 @@ export class MatchScene extends Phaser.Scene {
     for (const [uid, view] of this.handViews.entries()) {
       if (desired.has(uid)) continue;
       this.handViews.delete(uid);
+      const lastTarget = view.layoutTarget ? { ...view.layoutTarget } : null;
+      view.layoutRevision = (view.layoutRevision || 0) + 1;
+      view.layoutTarget = null;
+      this.tweens.killTweensOf(view);
+      if (view.shadow) this.tweens.killTweensOf(view.shadow);
+      view.clearHoverTweens?.();
+      view.forceEndInspect?.();
+      if (lastTarget) {
+        this.lastKnownPos.set(uid, { x: lastTarget.x, y: lastTarget.y });
+      } else {
       this.recordPosition(uid, view);
+      }
       if (this.currentZones.has(uid) && this.currentZones.get(uid).includes("board")) {
         this.tweens.add({
           targets: view,
@@ -517,11 +617,9 @@ export class MatchScene extends Phaser.Scene {
     });
     cards.forEach((card, index) => {
       const fan = fanTargets[index];
-      const canPlay =
-        !this.viewState.winner &&
-        !this.viewState.pendingQuiz &&
-        this.viewState.currentPlayer === "player" &&
-        (card.playCost ?? card.cost ?? 0) <= this.viewState.player.inspiration;
+      const discardMode = Boolean(this.viewState?.pendingHandDiscard?.ownerKey === "player");
+      const canPlay = Boolean(card.playable);
+      const canAct = discardMode || canPlay;
       let view = this.handViews.get(card.uid);
       const prevZone = this.prevZones.get(card.uid);
       const fromPos = this.lastKnownPos.get(card.uid);
@@ -531,7 +629,13 @@ export class MatchScene extends Phaser.Scene {
           interactive: true,
           disableHover: false,
           layoutMode: profile.cardLayout,
-          onClick: () => this.adapter.actions.playHandCard?.(card.uid),
+          onClick: () => {
+            if (this.viewState?.pendingHandDiscard) {
+              this.adapter.actions.discardHandCard?.(card.uid);
+              return;
+            }
+            this.adapter.actions.playHandCard?.(card.uid);
+          },
         });
 
         const origin = fromPos || this.playerDeckPos;
@@ -539,15 +643,20 @@ export class MatchScene extends Phaser.Scene {
         view.setScale(0.58);
         view.setAngle(8);
         view.setAlpha(0.8);
+        view.setSettling(true);
         this.handLayer.add(view);
         this.handViews.set(card.uid, view);
+      } else if (prevZone !== "hand") {
+        view.setSettling(true);
       }
 
       view.setLayout(profile.cardLayout);
       view.updateData(card);
-      view.alpha = canPlay ? 1 : 0.56;
-      view.setInputEnabled(canPlay);
+      view.alpha = canAct ? 1 : 0.56;
+      view.setInputEnabled(true);
+      view.setActionEnabled(canAct);
       view.setThemeMatch(Boolean(card.matchesTheme));
+      view.setTargetable(discardMode);
       this.handLayer.bringToTop(view);
 
       const target = {
@@ -559,9 +668,13 @@ export class MatchScene extends Phaser.Scene {
       };
 
       this.moveTo(view, target, {
+        domain: "hand",
         duration: prevZone ? 190 : 280,
         ease: prevZone ? "Quad.Out" : "Cubic.Out",
-        onComplete: () => this.recordPosition(card.uid, view),
+        onComplete: () => {
+          view.setSettling(false);
+          this.recordPosition(card.uid, view);
+        },
       });
     });
   }

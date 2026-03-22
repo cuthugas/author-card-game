@@ -7,11 +7,16 @@ const DEFAULT_ENABLE_THEME_BONUS = false;
 const DEFAULT_ENABLE_AUTHOR_KNOWLEDGE_BONUS = false;
 const SFX_EVENT_NAME = "acg:sfx";
 const DEBUG_DOM_UI = Boolean(window.__ACG_DEBUG_DOM_UI);
+const DEV_MATCH_LOG =
+  new URLSearchParams(window.location.search).get("devMatchLog") === "1" ||
+  localStorage.getItem("acg_dev_match_log") === "1";
 const STATE_EVENT_NAME = "acg:state";
 const FX_EVENT_NAME = "acg:fx";
+const HAND_REVEAL_EVENT_NAME = "acg:hand-reveal";
 const PHONE_LAYOUT_MAX_HEIGHT = 1100;
 const PHONE_ROTATE_SHORT_SIDE = 600;
-const APP_BUILD_ID = "d924f2c";
+const APP_BUILD_ID = "LOCAL-2026-03-21-A";
+window.__ACG_APP_BUILD_ID = APP_BUILD_ID;
 
 const AUTHOR_PROFILES = {
   Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
@@ -391,6 +396,9 @@ const QUICK_CHECK_BANKS = {
 };
 
 const QUICK_CHECK_BANK = Object.values(QUICK_CHECK_BANKS).flat();
+const CORE_SET_KEY = "prototype-core";
+const PRIMARY_AUTHOR_KEYS = new Set(["Shakespeare", "Lewis Carroll"]);
+const PLAYER_HAND_LIMIT = 6;
 
 const refs = {
   aiRep: document.getElementById("ai-rep"),
@@ -408,6 +416,8 @@ const refs = {
   aiBoard: document.getElementById("ai-board"),
   playerBoard: document.getElementById("player-board"),
   playerHandCards: document.getElementById("player-hand-cards"),
+  handPanel: document.querySelector(".hand-panel"),
+  handModeText: document.getElementById("hand-mode-text"),
   turnLabel: document.getElementById("turn-label"),
   phaseLabel: document.getElementById("phase-label"),
   themeLabel: document.getElementById("theme-label"),
@@ -437,16 +447,21 @@ const refs = {
   quizOptions: document.getElementById("quiz-options"),
   cardTemplate: document.getElementById("card-template"),
   app: document.querySelector(".app"),
+  topbarActions: document.querySelector(".topbar-actions"),
   rotateWarning: document.getElementById("rotate-warning"),
 };
 
 const cardPool = [
   { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", cost: 2, attack: 3, defense: 2, memorability: 3, themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Represents indecision, revenge, and moral conflict.", effectText: "None." },
   { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "None." },
+  { key: "juliet", name: "Juliet", type: "character", author: "Shakespeare", cost: 2, attack: 2, defense: 1, memorability: 2, themes: ["identity", "tragedy"], who: "Juliet Capulet from Romeo and Juliet.", why: "A fragile tragic presence whose defeat still pushes the story toward the opposing writer.", effectText: "On Defeat: Deal 1 damage to the enemy Writer.", triggers: [{ event: "onDefeat", effects: [{ type: "dealDamage", target: "enemyWriter", amount: 1 }] }] },
   { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Embodies persuasion, guilt, and ambition.", effectText: "None." },
   { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "On Defeat: Destroy the weakest enemy character.", triggers: [{ event: "onDefeat", effects: [{ type: "destroyTarget", target: "enemyLowestMem" }] }] },
+  { key: "weird_sisters", name: "The Weird Sisters", type: "character", author: "Shakespeare", cost: 3, attack: 2, defense: 1, memorability: 3, themes: ["ambition", "power", "tragedy"], who: "The prophetic witches of Macbeth.", why: "They dig through fate and set up future Shakespeare plays in hand.", effectText: "On Summon: Reveal your top 3 cards. Put the first Shakespeare card into your hand. Discard the rest.", triggers: [{ event: "onSummon", effects: [{ type: "peekTopDeckAuthorToHand", amount: 3, author: "Shakespeare" }] }] },
   { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Represents growth through curiosity and questioning.", effectText: "None." },
-  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "On Summon: Gain +1 Inspiration.", triggers: [{ event: "onSummon", effects: [{ type: "gainInspiration", amount: 1 }] }] },
+  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "On Defeat: Return this card to your hand.", triggers: [{ event: "onDefeat", effects: [{ type: "returnCardToHand", target: "self" }] }] },
+  { key: "white_rabbit", name: "White Rabbit", type: "character", author: "Lewis Carroll", cost: 2, attack: 1, defense: 2, memorability: 3, themes: ["curiosity", "wonderland"], who: "The hurried herald who draws Alice deeper into Wonderland.", why: "Provides momentum and card flow without being a combat-heavy body.", effectText: "On Summon: Draw 1 card.", triggers: [{ event: "onSummon", effects: [{ type: "drawCard", amount: 1 }] }] },
+  { key: "bandersnatch", name: "Bandersnatch", type: "character", author: "Lewis Carroll", cost: 3, attack: 3, defense: 2, memorability: 3, themes: ["curiosity", "wonderland"], who: "The dangerous creature warned about in Jabberwocky.", why: "Acts like a focused skirmisher that can slip past a lone defender without changing the broader combat rules.", effectText: "Can attack the enemy Writer directly if that enemy has exactly 1 character in play." },
   { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Parodies arbitrary authority.", effectText: "None." },
   { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "None." },
   { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", subtype: "literary_device", author: "Literary Device", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, themes: ["power", "identity"], who: "A poetic meter of five unstressed/stressed pairs per line.", why: "Key rhythm used in Shakespeare's dramatic verse.", effectText: "Best ally gains +2 ATK and +1 MEM.", quiz: { question: "What is iambic pentameter?", options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"], correctIndex: 0, explanation: "Iambic pentameter is a 10-syllable line with five iambs." } },
@@ -457,6 +472,14 @@ const cardPool = [
   { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Wonderland", cost: 2, effect: "draw_cards", value: 2, themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "On Play: Draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 2 }] }] },
   { key: "revision", name: "Revision", type: "plot", author: "Writing", cost: 2, effect: "heal_self", value: 3, themes: ["identity"], who: "Reworking ideas after feedback.", why: "Shows growth and deeper understanding in writing.", effectText: "Restore 3 Reputation." },
   { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Writing", cost: 1, effect: "gain_inspiration", value: 2, themes: ["power", "ambition"], who: "Focused push to finish written work.", why: "Represents urgency and productivity pressure.", effectText: "Gain +2 Inspiration this turn." },
+  { key: "hyperbole", name: "Hyperbole", type: "plot", author: "Neutral", cost: 1, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 0 }, themes: [], who: "Deliberate exaggeration for emphasis.", why: "Boosts a standout idea without adding a new targeting system.", effectText: "Strongest ally gains +2 ATK." },
+  { key: "internal_conflict", name: "Internal Conflict", type: "plot", author: "Neutral", cost: 2, effect: "damage_enemy_by_own_attack", themes: ["identity", "tragedy"], who: "A clash within a character that turns their own force against them.", why: "Uses current ATK as the damage source with a stable strongest-enemy fallback.", effectText: "Strongest enemy takes damage equal to its current ATK." },
+  { key: "exposition", name: "Exposition", type: "plot", author: "Neutral", cost: 1, effect: "draw_and_gain_knowledge", themes: ["identity"], who: "Context-setting information that helps a reader understand what comes next.", why: "Pairs a small cantrip effect with steady learning progress.", effectText: "On Play: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
+  { key: "suspense", name: "Suspense", type: "plot", author: "Neutral", cost: 1, effect: "reveal_random_enemy_hand", themes: [], who: "A tactic that heightens uncertainty before the payoff.", why: "Gives quick information without adding risky discard mechanics.", effectText: "On Play: Reveal a random enemy hand card.", triggers: [{ event: "onPlay", effects: [{ type: "revealRandomEnemyHand" }] }] },
+  { key: "foreshadowing", name: "Foreshadowing", type: "plot", author: "Neutral", cost: 2, effect: "reveal_enemy_hand_all", themes: [], who: "Early hints that point toward future events.", why: "Lets you scout the full enemy hand in a simple prototype-safe way.", effectText: "On Play: Reveal all enemy hand cards.", triggers: [{ event: "onPlay", effects: [{ type: "revealEnemyHandAll" }] }] },
+  { key: "protagonist", name: "Protagonist", type: "plot", author: "Neutral", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 1, memorability: 1 }, themes: [], who: "A central figure receiving narrative focus and support.", why: "Provides a modest spotlight buff using an existing rule path.", effectText: "Strongest ally gains +1 ATK and +1 MEM." },
+  { key: "a_pound_of_flesh", name: "A Pound of Flesh", type: "plot", author: "Shakespeare", cost: 2, effect: "weaken_enemy_top_defense_turn", themes: ["power", "tragedy"], who: "A merciless demand from The Merchant of Venice.", why: "Temporarily strips defense from the strongest enemy to open a short attack window.", effectText: "Strongest enemy gets -2 DEF this turn." },
+  { key: "eat_me_drink_me", name: "Eat Me / Drink Me", type: "artifact", author: "Lewis Carroll", cost: 2, effect: "swing_target_character_turn", themes: ["curiosity", "identity", "wonderland"], who: "Wonderland's size-shifting food and drink.", why: "Uses explicit battlefield targeting so the player can choose who grows or shrinks.", effectText: "Choose a battlefield character. Friendly: +1 ATK/+1 MEM this turn. Enemy: -1 ATK/-1 MEM this turn." },
   { key: "tea_party_chaos", name: "Tea Party Chaos", type: "plot", author: "Wonderland", cost: 3, effect: "weaken_enemy_all", value: 1, themes: ["curiosity", "wonderland"], who: "Mad Tea Party scene.", why: "Highlights absurd logic and social satire.", effectText: "All enemies lose 1 ATK (min 1)." },
   { key: "critical_essay", name: "Critical Essay", type: "plot", author: "Classroom", cost: 1, effect: "draw_cards", value: 1, themes: ["identity", "power"], who: "Analytical writing about literature.", why: "Builds evidence-based interpretation.", effectText: "Draw 1 card." },
 ];
@@ -490,6 +513,14 @@ const sfxState = {
 const phaserUiBridge = {
   quizHandler: null,
   winnerHandler: null,
+};
+const matchLogState = {
+  matchId: null,
+  seq: 0,
+  events: [],
+  finished: false,
+  exported: false,
+  exportButton: null,
 };
 const viewportState = {
   syncFrame: 0,
@@ -525,9 +556,243 @@ function ensureBuildBadge() {
   return badge;
 }
 
+function makeMatchId() {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function currentActorLabel(actor) {
+  if (actor === "player") return state?.player?.name || "player";
+  if (actor === "ai") return state?.ai?.name || "ai";
+  return actor || "";
+}
+
+function matchLoggerEnabled() {
+  return DEV_MATCH_LOG;
+}
+
+function normalizeMatchLogField(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function escapeCsvValue(value) {
+  const text = normalizeMatchLogField(value);
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, "\"\"")}"`;
+  }
+  return text;
+}
+
+function getMatchLogOwnerKey(owner) {
+  if (!state || !owner) return "";
+  if (owner === state.player) return "player";
+  if (owner === state.ai) return "ai";
+  return "";
+}
+
+function startMatchLog(context = {}) {
+  if (!matchLoggerEnabled()) return;
+  matchLogState.matchId = makeMatchId();
+  matchLogState.seq = 0;
+  matchLogState.events = [];
+  matchLogState.finished = false;
+  matchLogState.exported = false;
+  logMatchEvent({
+    actor: "system",
+    eventType: "match_start",
+    details: context,
+  });
+}
+
+function logMatchEvent(event = {}) {
+  if (!matchLoggerEnabled() || !matchLogState.matchId) return;
+  try {
+    matchLogState.seq += 1;
+    matchLogState.events.push({
+      matchId: matchLogState.matchId,
+      timestamp: new Date().toISOString(),
+      turn: state?.turn ?? "",
+      seq: matchLogState.seq,
+      actor: currentActorLabel(event.actor),
+      eventType: event.eventType || "",
+      cardId: event.cardId || "",
+      cardName: event.cardName || "",
+      sourceZone: event.sourceZone || "",
+      targetZone: event.targetZone || "",
+      targetCardName: event.targetCardName || "",
+      targetPlayer: currentActorLabel(event.targetPlayer),
+      value: event.value ?? "",
+      details: normalizeMatchLogField(event.details),
+      winner: currentActorLabel(event.winner),
+      winCondition: event.winCondition || "",
+    });
+  } catch (error) {
+    console.warn("[ACG Match Log] Failed to record event.", error);
+  }
+}
+
+function buildMatchLogCsv() {
+  const columns = [
+    "matchId",
+    "timestamp",
+    "turn",
+    "seq",
+    "actor",
+    "eventType",
+    "cardId",
+    "cardName",
+    "sourceZone",
+    "targetZone",
+    "targetCardName",
+    "targetPlayer",
+    "value",
+    "details",
+    "winner",
+    "winCondition",
+  ];
+  const rows = [columns.join(",")];
+  matchLogState.events.forEach((event) => {
+    rows.push(columns.map((column) => escapeCsvValue(event[column])).join(","));
+  });
+  return rows.join("\r\n");
+}
+
+function exportMatchLogCsv(trigger = "manual") {
+  if (!matchLoggerEnabled() || !matchLogState.matchId || !matchLogState.events.length) return false;
+  try {
+    const csv = buildMatchLogCsv();
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `acg_match_${matchLogState.matchId}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    matchLogState.exported = true;
+    console.info(`[ACG Match Log] CSV exported (${trigger}) for match ${matchLogState.matchId}.`);
+    return true;
+  } catch (error) {
+    console.warn("[ACG Match Log] Failed to export CSV.", error);
+    return false;
+  }
+}
+
+function finishMatchLog(context = {}) {
+  if (!matchLoggerEnabled() || !matchLogState.matchId || matchLogState.finished) return;
+  matchLogState.finished = true;
+  logMatchEvent({
+    actor: "system",
+    eventType: "match_result",
+    winner: context.winner || state?.winner || "",
+    winCondition: context.winCondition || "",
+    details: context.details || "",
+  });
+  exportMatchLogCsv("match_end");
+}
+
+function ensureDevMatchExportButton() {
+  if (!matchLoggerEnabled() || !refs.topbarActions || matchLogState.exportButton) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "button icon-button secondary";
+  button.textContent = "Export CSV";
+  button.title = "Export dev match CSV";
+  button.addEventListener("click", () => {
+    exportMatchLogCsv("manual");
+  });
+  refs.topbarActions.appendChild(button);
+  matchLogState.exportButton = button;
+}
+
 function stateSnapshot() {
   if (!state) return null;
   return JSON.parse(JSON.stringify(state));
+}
+
+function getRawPendingHandDiscard(gameState = state) {
+  return gameState?.pendingHandDiscard || null;
+}
+
+function getPendingHandDiscard(ownerKey = "player", gameState = state) {
+  const pending = getRawPendingHandDiscard(gameState);
+  const owner = gameState?.[ownerKey];
+  if (!pending || pending.ownerKey !== ownerKey) return null;
+  if (!owner || !Array.isArray(owner.hand)) return null;
+  if (!Number.isFinite(pending.handLimit)) return null;
+  if (gameState?.currentPlayer !== ownerKey) return null;
+  if (owner.hand.length <= pending.handLimit) return null;
+  return pending;
+}
+
+function getHandDiscardRemaining(ownerKey = "player", gameState = state) {
+  const pending = getPendingHandDiscard(ownerKey, gameState);
+  if (!pending) return 0;
+  const owner = gameState?.[ownerKey];
+  return Math.max(0, (owner?.hand?.length || 0) - pending.handLimit);
+}
+
+function isHandDiscardActive(ownerKey = "player", gameState = state) {
+  return Boolean(getPendingHandDiscard(ownerKey, gameState));
+}
+
+function getHandDiscardStatusText(ownerKey = "player", gameState = state) {
+  const pending = getPendingHandDiscard(ownerKey, gameState);
+  if (!pending) return "";
+  const remaining = getHandDiscardRemaining(ownerKey, gameState);
+  if (remaining <= 0) return `Hand is back to ${pending.handLimit} cards.`;
+  return `Choose ${remaining} more card${remaining === 1 ? "" : "s"} to discard.`;
+}
+
+function clearPlayerActionSelections() {
+  state.selectedAttackerUid = null;
+  clearPendingTargeting();
+}
+
+async function maybeResolvePendingHandDiscard(ownerKey = "player") {
+  const pending = getRawPendingHandDiscard();
+  if (!pending || pending.resolving) return false;
+  if (pending.ownerKey !== ownerKey) return false;
+  if (getHandDiscardRemaining(ownerKey) > 0) return false;
+
+  pending.resolving = true;
+  state.pendingHandDiscard = null;
+  logEvent(`Hand limit satisfied. ${ownerKey === "player" ? "Ending turn." : "Continuing."}`);
+
+  if (ownerKey === "player" && pending.reason === "end-turn") {
+    render();
+    await finishPlayerTurn();
+    return true;
+  }
+
+  render();
+  return true;
+}
+
+function enterHandDiscardMode(ownerKey = "player", reason = "end-turn") {
+  const owner = state?.[ownerKey];
+  if (!owner) return false;
+  const overflow = owner.hand.length - PLAYER_HAND_LIMIT;
+  if (overflow <= 0) return false;
+
+  clearPlayerActionSelections();
+  state.pendingHandDiscard = {
+    ownerKey,
+    handLimit: PLAYER_HAND_LIMIT,
+    reason,
+    resolving: false,
+  };
+  logEvent(`Discard down to ${PLAYER_HAND_LIMIT} cards.`);
+  logEvent(getHandDiscardStatusText(ownerKey));
+  spawnFloatingFx("Discard down to 6", panelForOwner(ownerKey), "info", { fontSize: "16px", maxWidth: 220 });
+  return true;
 }
 
 function notifyStateChanged() {
@@ -544,8 +809,52 @@ function newPlayer(name, activeAuthor) {
   return { name, reputation: STARTING_REPUTATION, maxInspiration: 0, inspiration: 0, knowledge: 0, activeAuthor, deck: createDeck(), hand: [], board: [], discard: [], hasDrawnThisTurn: false };
 }
 
+function getDeckIdentity(card) {
+  return card?.id || (card?.set && card?.key ? `${card.set}:${card.key}` : card?.key || null);
+}
+
+function getDeckCopyLimit(card) {
+  if (!card) return Infinity;
+  if (Number.isInteger(card.deckLimit) && card.deckLimit > 0) return card.deckLimit;
+  if (Number.isInteger(card.maxCopies) && card.maxCopies > 0) return card.maxCopies;
+  if (card.cardType === "character" || card.type === "character") return 1;
+  return Infinity;
+}
+
+function createCardRuntimeMeta(card, overrides = {}) {
+  const origin = overrides.origin || (card?.isToken ? "token" : "deck");
+  return {
+    origin,
+    createdBy: overrides.createdBy || null,
+    copiedFromId: overrides.copiedFromId || null,
+    copiedFromUid: overrides.copiedFromUid || null,
+  };
+}
+
 function createDeck() {
-  return shuffle(cardPool.map(cloneCardTemplate));
+  const deck = [];
+  const copyCounts = new Map();
+
+  // Deck construction rules only apply while assembling a deck list.
+  // Runtime card creation can still produce duplicates later through effects.
+  cardPool.forEach((definition) => {
+    const card = cloneCardTemplate(definition);
+    const identity = getDeckIdentity(card);
+    const copyLimit = getDeckCopyLimit(card);
+
+    if (!identity || !Number.isFinite(copyLimit)) {
+      deck.push(card);
+      return;
+    }
+
+    const usedCopies = copyCounts.get(identity) || 0;
+    if (usedCopies >= copyLimit) return;
+
+    copyCounts.set(identity, usedCopies + 1);
+    deck.push(card);
+  });
+
+  return shuffle(deck);
 }
 
 function inferRarity(card) {
@@ -554,10 +863,208 @@ function inferRarity(card) {
   return "common";
 }
 
-function cloneCardTemplate(card) {
-  const cloned = {
+function slugifyCardMeta(value, fallback = "neutral") {
+  return String(value || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || fallback;
+}
+
+function normalizeCardType(type = "plot") {
+  return String(type || "plot").trim().toLowerCase();
+}
+
+function inferCardAffiliation(card) {
+  if (card.affiliation) return card.affiliation;
+  if (!card.author || card.author === "Neutral") return "neutral";
+  if (PRIMARY_AUTHOR_KEYS.has(card.author)) return slugifyCardMeta(card.author);
+  return slugifyCardMeta(card.author);
+}
+
+const VALID_TRIGGER_EVENTS = new Set(["onPlay", "onSummon", "onDefeat", "onTurnStart", "onTurnEnd"]);
+const VALID_TRIGGER_EFFECT_TYPES = new Set([
+  "drawCard",
+  "gainKnowledge",
+  "gainInspiration",
+  "dealDamage",
+  "heal",
+  "buffSelf",
+  "returnCardToHand",
+  "destroyTarget",
+  "revealRandomEnemyHand",
+  "revealEnemyHandAll",
+  "peekTopDeckAuthorToHand",
+]);
+const VALID_LEGACY_EFFECTS = new Set([
+  "buff_friendly_top_attack",
+  "damage_enemy_top_attack",
+  "damage_enemy_by_own_attack",
+  "destroy_enemy_lowest_mem",
+  "damage_enemy_writer",
+  "resurrect_character",
+  "draw_cards",
+  "draw_and_gain_knowledge",
+  "heal_self",
+  "gain_inspiration",
+  "weaken_enemy_all",
+  "weaken_enemy_top_defense_turn",
+  "reveal_random_enemy_hand",
+  "reveal_enemy_hand_all",
+  "swing_target_character_turn",
+]);
+
+function isNonNegativeNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function enrichCardDefinition(card) {
+  const normalizedType = normalizeCardType(card.type);
+  const normalizedSubtype = card.subtype ? slugifyCardMeta(card.subtype, "") : null;
+  const normalizedThemes = card.themes ? [...card.themes] : [];
+  const normalizedKeywords = card.keywords ? [...card.keywords] : [];
+  const normalizedTags = new Set(card.tags || []);
+  if (normalizedSubtype) normalizedTags.add(normalizedSubtype);
+  normalizedThemes.forEach((theme) => normalizedTags.add(slugifyCardMeta(theme, theme)));
+
+  return {
     ...card,
-    themes: card.themes ? [...card.themes] : [],
+    id: card.id || `${CORE_SET_KEY}:${card.key}`,
+    type: normalizedType,
+    cardType: normalizedType,
+    subtype: normalizedSubtype,
+    author: card.author || "Neutral",
+    affiliation: inferCardAffiliation(card),
+    isNeutral: card.isNeutral ?? (!card.author || card.author === "Neutral"),
+    maxCopies: Number.isInteger(card.maxCopies) ? card.maxCopies : null,
+    deckLimit: Number.isInteger(card.deckLimit) ? card.deckLimit : (Number.isInteger(card.maxCopies) ? card.maxCopies : null),
+    rarity: card.rarity || inferRarity(card),
+    isToken: Boolean(card.isToken),
+    set: card.set || CORE_SET_KEY,
+    keywords: normalizedKeywords,
+    tags: [...normalizedTags],
+    themes: normalizedThemes,
+  };
+}
+
+function validateCardDefinitions(cards) {
+  const warnings = [];
+  const keyToIndex = new Map();
+  const idToIndex = new Map();
+
+  const warn = (card, message) => {
+    const label = card?.key ? `${card.key}` : `index ${cards.indexOf(card)}`;
+    warnings.push(`[${label}] ${message}`);
+  };
+
+  cards.forEach((card, index) => {
+    const enriched = enrichCardDefinition(card);
+
+    if (!card?.key) warnings.push(`[index ${index}] missing key`);
+    else if (keyToIndex.has(card.key)) warnings.push(`[${card.key}] duplicate key also used at index ${keyToIndex.get(card.key)}`);
+    else keyToIndex.set(card.key, index);
+
+    if (!card?.name) warn(card, "missing name");
+    if (!card?.type) warn(card, "missing type");
+    if (!enriched.cardType) warn(card, "missing normalized cardType");
+    if (card?.type && normalizeCardType(card.type) !== enriched.cardType) {
+      warn(card, `type/cardType mismatch after normalization (${card.type} -> ${enriched.cardType})`);
+    }
+    if (!card?.author) warn(card, "missing author");
+
+    if (!enriched.id) warn(card, "missing id");
+    else if (idToIndex.has(enriched.id)) warnings.push(`[${card.key || index}] duplicate id also used at index ${idToIndex.get(enriched.id)}`);
+    else idToIndex.set(enriched.id, index);
+
+    if (!Array.isArray(card?.themes ?? [])) warn(card, "themes should be an array");
+    if (card?.keywords != null && !Array.isArray(card.keywords)) warn(card, "keywords should be an array when present");
+    if (card?.tags != null && !Array.isArray(card.tags)) warn(card, "tags should be an array when present");
+
+    if (!isNonNegativeNumber(Number(card?.cost))) warn(card, "cost should be a non-negative number");
+    if (card?.type === "character" || enriched.cardType === "character") {
+      if (!isNonNegativeNumber(Number(card?.attack))) warn(card, "character is missing a valid non-negative attack");
+      if (!isNonNegativeNumber(Number(card?.defense))) warn(card, "character is missing a valid non-negative defense");
+      if (!isNonNegativeNumber(Number(card?.memorability))) warn(card, "character is missing a valid non-negative memorability");
+    }
+
+    if (card?.author === "Neutral" && enriched.affiliation !== "neutral") {
+      warn(card, `neutral card should normalize to neutral affiliation, got ${enriched.affiliation}`);
+    }
+    if (enriched.isNeutral && enriched.affiliation !== "neutral") {
+      warn(card, `isNeutral card should use neutral affiliation, got ${enriched.affiliation}`);
+    }
+    if (!enriched.isNeutral && enriched.author === "Neutral") {
+      warn(card, "author is Neutral but isNeutral is false");
+    }
+
+    if (card?.maxCopies != null && (!Number.isInteger(card.maxCopies) || card.maxCopies < 1)) {
+      warn(card, "maxCopies should be a positive integer when present");
+    }
+    if (card?.deckLimit != null && (!Number.isInteger(card.deckLimit) || card.deckLimit < 1)) {
+      warn(card, "deckLimit should be a positive integer when present");
+    }
+    if ((enriched.cardType === "character") && enriched.maxCopies != null && enriched.maxCopies > 1) {
+      warn(card, "character maxCopies is above the default prototype deck rule; this only matters if a deck builder/generator opts into that exception");
+    }
+
+    if (card?.effect && !VALID_LEGACY_EFFECTS.has(card.effect)) {
+      warn(card, `unknown legacy effect '${card.effect}'`);
+    }
+
+    if (card?.triggers != null && !Array.isArray(card.triggers)) {
+      warn(card, "triggers should be an array when present");
+    }
+
+    (card?.triggers || []).forEach((trigger, triggerIndex) => {
+      if (!trigger || typeof trigger !== "object") {
+        warn(card, `trigger[${triggerIndex}] is not an object`);
+        return;
+      }
+      if (!trigger.event) warn(card, `trigger[${triggerIndex}] missing event`);
+      else if (!VALID_TRIGGER_EVENTS.has(trigger.event)) warn(card, `trigger[${triggerIndex}] uses unknown event '${trigger.event}'`);
+      if (!Array.isArray(trigger.effects)) {
+        warn(card, `trigger[${triggerIndex}] effects should be an array`);
+        return;
+      }
+      trigger.effects.forEach((effect, effectIndex) => {
+        if (!effect || typeof effect !== "object") {
+          warn(card, `trigger[${triggerIndex}] effect[${effectIndex}] is not an object`);
+          return;
+        }
+        if (!effect.type) warn(card, `trigger[${triggerIndex}] effect[${effectIndex}] missing type`);
+        else if (!VALID_TRIGGER_EFFECT_TYPES.has(effect.type)) {
+          warn(card, `trigger[${triggerIndex}] effect[${effectIndex}] uses unknown type '${effect.type}'`);
+        }
+      });
+    });
+  });
+
+  const summary = {
+    totalCards: cards.length,
+    warningCount: warnings.length,
+  };
+
+  if (warnings.length) {
+    console.groupCollapsed(`[ACG Card Validation] ${warnings.length} warning(s) across ${cards.length} cards`);
+    warnings.forEach((warning) => console.warn(warning));
+    console.groupEnd();
+  } else {
+    console.info(`[ACG Card Validation] ${cards.length} cards validated with no warnings.`);
+  }
+
+  return summary;
+}
+
+const cardValidationReport = validateCardDefinitions(cardPool);
+window.__ACGCardValidationReport = cardValidationReport;
+
+function cloneCardTemplate(card, runtimeOverrides = {}) {
+  const baseCard = enrichCardDefinition(card);
+  const cloned = {
+    ...baseCard,
+    themes: baseCard.themes ? [...baseCard.themes] : [],
+    keywords: baseCard.keywords ? [...baseCard.keywords] : [],
+    tags: baseCard.tags ? [...baseCard.tags] : [],
     quiz: card.quiz ? { ...card.quiz, options: [...card.quiz.options] } : null,
     value: card.value && typeof card.value === "object" ? { ...card.value } : card.value,
     triggers: card.triggers ? card.triggers.map((trigger) => ({
@@ -567,9 +1074,11 @@ function cloneCardTemplate(card) {
         value: effect.value && typeof effect.value === "object" ? { ...effect.value } : effect.value,
       })),
     })) : [],
+    runtime: createCardRuntimeMeta(baseCard, runtimeOverrides),
   };
-  cloned.rarity = card.rarity || inferRarity(card);
-  cloned.uid = `${card.key}_${uid++}`;
+  cloned.origin = cloned.runtime.origin;
+  cloned.rarity = baseCard.rarity;
+  cloned.uid = `${baseCard.key}_${uid++}`;
   if (cloned.type === "character") {
     cloned.currentMemorability = cloned.memorability;
     cloned.exhausted = false;
@@ -616,6 +1125,14 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
   if (!effect?.type) return;
   const { owner, enemy } = getOwnerAndEnemy(ownerKey);
   const amount = effect.amount ?? effect.value ?? 1;
+  logMatchEvent({
+    actor: ownerKey,
+    eventType: "trigger_resolved",
+    cardId: sourceCard?.id,
+    cardName: sourceCard?.name,
+    value: amount,
+    details: { triggerType: effect.type, target: effect.target || "" },
+  });
 
   switch (effect.type) {
     case "drawCard":
@@ -630,6 +1147,7 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
       owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + amount);
       spawnFloatingFx(`+${amount} Insp`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} gains +${amount} Inspiration from ${sourceCard.name}.`);
+      logMatchEvent({ actor: ownerKey, eventType: "inspiration_gained", cardId: sourceCard?.id, cardName: sourceCard?.name, value: amount });
       break;
     case "dealDamage": {
       const targetCard = resolveTriggerTarget(ownerKey, effect, { ...context, sourceCard });
@@ -639,6 +1157,7 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
         flashTarget(panel);
         spawnFloatingFx(`-${amount}`, panel);
         logEvent(`${sourceCard.name} deals ${amount} damage to ${enemy.name}.`);
+        logMatchEvent({ actor: ownerKey, eventType: "damage_dealt", cardId: sourceCard?.id, cardName: sourceCard?.name, targetPlayer: ownerKey === "player" ? "ai" : "player", value: amount, details: { targetType: "writer" } });
         break;
       }
       if (targetCard) {
@@ -647,6 +1166,7 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
         flashTarget(targetEl);
         spawnFloatingFx(`-${amount}`, targetEl);
         logEvent(`${sourceCard.name} deals ${amount} damage to ${targetCard.name}.`);
+        logMatchEvent({ actor: ownerKey, eventType: "damage_dealt", cardId: sourceCard?.id, cardName: sourceCard?.name, targetCardName: targetCard.name, targetPlayer: ownerKey === "player" ? "ai" : "player", value: amount, details: { targetType: "character" } });
       }
       break;
     }
@@ -655,6 +1175,7 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
       flashTarget(panelForOwner(ownerKey));
       spawnFloatingFx(`+${amount}`, panelForOwner(ownerKey), "heal");
       logEvent(`${owner.name} restores ${amount} Reputation from ${sourceCard.name}.`);
+      logMatchEvent({ actor: ownerKey, eventType: "healing", cardId: sourceCard?.id, cardName: sourceCard?.name, value: amount });
       break;
     case "buffSelf":
       if (!sourceCard || sourceCard.type !== "character") break;
@@ -669,9 +1190,11 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
         sourceCard.currentMemorability = sourceCard.memorability || sourceCard.currentMemorability;
         sourceCard.exhausted = false;
         owner.hand.push(sourceCard);
+        void maybeResolvePendingHandDiscard(ownerKey);
         context.preventDiscard = true;
         spawnFloatingFx("Return", panelForOwner(ownerKey), "heal");
         logEvent(`${sourceCard.name} returns to ${owner.name}'s hand.`);
+        logMatchEvent({ actor: ownerKey, eventType: "card_returned_to_hand", cardId: sourceCard?.id, cardName: sourceCard?.name, sourceZone: "board", targetZone: "hand" });
       } else {
         const index = owner.discard.findIndex((card) => card.type === "character");
         if (index >= 0) {
@@ -679,8 +1202,10 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
           revived.currentMemorability = revived.memorability;
           revived.exhausted = false;
           owner.hand.push(revived);
+          void maybeResolvePendingHandDiscard(ownerKey);
           spawnFloatingFx("Revive", panelForOwner(ownerKey), "heal");
           logEvent(`${owner.name} returns ${revived.name} to hand via ${sourceCard.name}.`);
+          logMatchEvent({ actor: ownerKey, eventType: "card_returned_to_hand", cardId: revived?.id, cardName: revived?.name, sourceZone: "discard", targetZone: "hand", details: { via: sourceCard?.name || "" } });
         }
       }
       break;
@@ -692,8 +1217,18 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
       flashTarget(targetEl);
       spawnFloatingFx("KO", targetEl);
       logEvent(`${sourceCard.name} destroys ${targetCard.name}.`);
+      logMatchEvent({ actor: ownerKey, eventType: "card_destroyed", cardId: sourceCard?.id, cardName: sourceCard?.name, targetCardName: targetCard?.name, targetPlayer: ownerKey === "player" ? "ai" : "player" });
       break;
     }
+    case "revealRandomEnemyHand":
+      revealEnemyHand(ownerKey, "random", sourceCard?.name);
+      break;
+    case "revealEnemyHandAll":
+      revealEnemyHand(ownerKey, "all", sourceCard?.name);
+      break;
+    case "peekTopDeckAuthorToHand":
+      peekTopDeckAuthorToHand(ownerKey, effect.amount ?? 3, effect.author, sourceCard?.name || "Deck Search");
+      break;
     default:
       break;
   }
@@ -1067,11 +1602,68 @@ function getCardCost(owner, card) {
   return card.cost;
 }
 
+function ownerAndEnemyFor(ownerKey, gameState = state) {
+  return {
+    owner: gameState?.[ownerKey],
+    enemy: ownerKey === "player" ? gameState?.ai : gameState?.player,
+  };
+}
+
+function getCardPlayBlockReason(ownerKey, card, gameState = state) {
+  if (!gameState || !card) return "missing-card";
+  const { owner, enemy } = ownerAndEnemyFor(ownerKey, gameState);
+  if (!owner || !enemy) return "missing-owner";
+  if (gameState.winner) return "game-over";
+  if (gameState.pendingQuiz) return "quiz-active";
+  if (gameState.pendingTarget) return "targeting-active";
+  if (getPendingHandDiscard(ownerKey, gameState)) return "discard-down-active";
+  if (gameState.currentPlayer !== ownerKey) return "wrong-turn";
+
+  const cardCost = getCardCost(owner, card);
+  if (cardCost > owner.inspiration) return "not-enough-inspiration";
+
+  const friendlyBoard = owner.board || [];
+  const enemyBoard = enemy.board || [];
+  const enemyHand = enemy.hand || [];
+  const friendlyDiscardCharacters = (owner.discard || []).filter((entry) => entry.type === "character");
+
+  switch (card.effect) {
+    case "buff_friendly_top_attack":
+      if (!friendlyBoard.length) return "needs-friendly-character";
+      break;
+    case "destroy_enemy_lowest_mem":
+    case "damage_enemy_top_attack":
+    case "damage_enemy_by_own_attack":
+    case "weaken_enemy_top_defense_turn":
+      if (!enemyBoard.length) return "needs-enemy-character";
+      break;
+    case "resurrect_character":
+      if (!friendlyDiscardCharacters.length) return "needs-friendly-discard-character";
+      break;
+    case "reveal_random_enemy_hand":
+    case "reveal_enemy_hand_all":
+      if (!enemyHand.length) return "needs-enemy-hand-card";
+      break;
+    case "swing_target_character_turn":
+      if (!friendlyBoard.length && !enemyBoard.length) return "needs-battlefield-character";
+      break;
+    default:
+      break;
+  }
+
+  return null;
+}
+
+function canPlayCard(ownerKey, card, gameState = state) {
+  return !getCardPlayBlockReason(ownerKey, card, gameState);
+}
+
 function addKnowledge(ownerKey, amount, reason) {
   const owner = state[ownerKey];
   owner.knowledge += amount;
   spawnFloatingFx(`+${amount} Knowledge`, panelForOwner(ownerKey), "heal");
   logEvent(`${owner.name} gains ${amount} Knowledge (${reason}).`);
+  logMatchEvent({ actor: ownerKey, eventType: "knowledge_gained", value: amount, details: reason });
 }
 
 function isThemeBonusEnabled() {
@@ -1152,6 +1744,8 @@ function initGame() {
     currentPlayer: "player",
     winner: null,
     selectedAttackerUid: null,
+    pendingTarget: null,
+    pendingHandDiscard: null,
     pendingQuiz: false,
     settings: { ...teacherSettings },
     matchTheme: randomTheme(),
@@ -1163,6 +1757,12 @@ function initGame() {
   hideWinnerBanner();
   hideQuizModal();
   closeAllDrawers();
+  startMatchLog({
+    playerAuthor: state.player.activeAuthor,
+    aiAuthor: state.ai.activeAuthor,
+    theme: state.matchTheme.label,
+    build: APP_BUILD_ID,
+  });
   drawCards(state.player, STARTING_HAND);
   drawCards(state.ai, STARTING_HAND);
   beginTurn("player");
@@ -1176,6 +1776,7 @@ function initGame() {
 }
 
 function drawCards(owner, count = 1) {
+  const ownerKey = getMatchLogOwnerKey(owner);
   for (let i = 0; i < count; i += 1) {
     if (owner.deck.length === 0) {
       if (owner.discard.length === 0) {
@@ -1186,11 +1787,25 @@ function drawCards(owner, count = 1) {
       owner.discard = [];
       logEvent(`${owner.name} reshuffles discard into deck.`);
     }
-    owner.hand.push(owner.deck.pop());
+    const drawnCard = owner.deck.pop();
+    owner.hand.push(drawnCard);
+    logMatchEvent({
+      actor: ownerKey,
+      eventType: "card_drawn",
+      cardId: drawnCard?.id,
+      cardName: drawnCard?.name,
+      sourceZone: "deck",
+      targetZone: "hand",
+      details: { remainingDeck: owner.deck.length },
+    });
   }
+  void maybeResolvePendingHandDiscard(owner === state?.player ? "player" : owner === state?.ai ? "ai" : "player");
 }
 
 function beginTurn(side) {
+  clearTurnModifiers();
+  clearPendingTargeting();
+  state.pendingHandDiscard = null;
   state.currentPlayer = side;
   const owner = state[side];
   owner.maxInspiration = Math.min(MAX_INSPIRATION, owner.maxInspiration + 1);
@@ -1201,6 +1816,12 @@ function beginTurn(side) {
   });
   state.selectedAttackerUid = null;
   logEvent(`${side === "player" ? "Your turn" : "AI turn"}: Inspiration refilled to ${owner.inspiration}.`);
+  logMatchEvent({
+    actor: side,
+    eventType: "turn_start",
+    value: owner.inspiration,
+    details: { maxInspiration: owner.maxInspiration },
+  });
   emitSfx("turn_start", { side });
   resolveBoardTriggers(side, "onTurnStart", { side });
 }
@@ -1218,12 +1839,14 @@ function flashTarget(element) {
   element.classList.add("hit");
 }
 
-function spawnFloatingFx(text, targetEl, kind = "damage") {
+function spawnFloatingFx(text, targetEl, kind = "damage", opts = {}) {
   const payload = {
     text,
     kind,
     uid: targetEl?.dataset?.cardUid || null,
     side: targetEl?.id === "player-panel" ? "player" : targetEl?.id === "ai-panel" ? "ai" : null,
+    fontSize: opts.fontSize || null,
+    maxWidth: opts.maxWidth || null,
   };
   window.dispatchEvent(new CustomEvent(FX_EVENT_NAME, { detail: payload }));
   if (!targetEl || !DEBUG_DOM_UI) return;
@@ -1243,6 +1866,11 @@ function cardElementByUid(uidValue) {
 
 async function askQuizPlayer(quiz, title = "Quick Check") {
   state.pendingQuiz = true;
+  logMatchEvent({
+    actor: "player",
+    eventType: "question_asked",
+    details: { title, question: quiz.question, options: quiz.options },
+  });
   render();
   if (!DEBUG_DOM_UI && phaserUiBridge.quizHandler) {
     const result = await phaserUiBridge.quizHandler({
@@ -1278,6 +1906,12 @@ async function askQuizPlayer(quiz, title = "Quick Check") {
         setTimeout(() => {
           hideQuizModal();
           state.pendingQuiz = false;
+          logMatchEvent({
+            actor: "player",
+            eventType: "question_answered",
+            value: isCorrect ? 1 : 0,
+            details: { title, question: quiz.question, selectedIndex: idx, correctIndex: quiz.correctIndex },
+          });
           resolve(isCorrect);
         }, 550);
       });
@@ -1288,9 +1922,20 @@ async function askQuizPlayer(quiz, title = "Quick Check") {
 
 async function resolveKnowledgeCheck(ownerKey, quiz, title) {
   if (ownerKey === "ai") {
+    logMatchEvent({
+      actor: "ai",
+      eventType: "question_asked",
+      details: { title, question: quiz.question, options: quiz.options },
+    });
     const correct = Math.random() < 0.65;
     if (correct) addKnowledge("ai", 1, "correct literary response");
     logEvent(`AI ${correct ? "answers" : "misses"} a literary check.`);
+    logMatchEvent({
+      actor: "ai",
+      eventType: "question_answered",
+      value: correct ? 1 : 0,
+      details: { title, question: quiz.question },
+    });
     return;
   }
   const correct = await askQuizPlayer(quiz, title);
@@ -1343,26 +1988,36 @@ function applyAuthorCharacterRules(ownerKey, card) {
 }
 
 async function playCard(ownerKey, handIndex) {
-  if (state.winner || state.pendingQuiz) return;
+  if (state.winner || state.pendingQuiz || state.pendingTarget || isHandDiscardActive(ownerKey)) return;
   const owner = state[ownerKey];
   const card = owner.hand[handIndex];
   if (!card) return;
+  if (!canPlayCard(ownerKey, card)) return;
   const cardCost = getCardCost(owner, card);
-  if (cardCost > owner.inspiration) return;
 
   owner.inspiration -= cardCost;
   spawnFloatingFx(`-${cardCost} Insp`, panelForOwner(ownerKey), "info");
+  logMatchEvent({ actor: ownerKey, eventType: "inspiration_spent", cardId: card?.id, cardName: card?.name, value: cardCost });
   owner.hand.splice(handIndex, 1);
+  void maybeResolvePendingHandDiscard(ownerKey);
 
   if (card.type === "character") {
     owner.board.push(card);
     logEvent(`${owner.name} summons ${card.name}.`);
+    logMatchEvent({ actor: ownerKey, eventType: "card_played", cardId: card?.id, cardName: card?.name, sourceZone: "hand", targetZone: "board" });
     spawnFloatingFx("Summoned", panelForOwner(ownerKey), "heal");
     emitSfx("card_play_character", { side: ownerKey, card: card.name, rarity: card.rarity });
     applyAuthorCharacterRules(ownerKey, card);
     dispatchCardEvent(ownerKey, card, "onPlay", { phase: "playCard" });
     dispatchCardEvent(ownerKey, card, "onSummon", { phase: "playCard" });
   } else {
+    if (card.effect === "swing_target_character_turn" && ownerKey === "player") {
+      startPendingTargeting(ownerKey, card, {
+        effect: card.effect,
+        prompt: `${card.name}: choose any battlefield character.`,
+      });
+      return;
+    }
     if (hasCardTriggers(card, "onPlay")) {
       dispatchCardEvent(ownerKey, card, "onPlay", { phase: "playCard" });
     } else {
@@ -1370,6 +2025,7 @@ async function playCard(ownerKey, handIndex) {
     }
     owner.discard.push(card);
     logEvent(`${owner.name} plays ${card.name}.`);
+    logMatchEvent({ actor: ownerKey, eventType: "card_played", cardId: card?.id, cardName: card?.name, sourceZone: "hand", targetZone: "discard" });
     spawnFloatingFx("Effect Resolved", panelForOwner(ownerKey), "info");
     emitSfx("card_play_spell", { side: ownerKey, card: card.name, rarity: card.rarity });
     if (card.subtype === "literary_device" && card.quiz) {
@@ -1395,6 +2051,8 @@ function resolveEffect(ownerKey, card) {
         flashTarget(cardElementByUid(target.uid));
         spawnFloatingFx(`+${card.value.attack}`, cardElementByUid(target.uid), "heal");
         logEvent(`${target.name} is empowered by ${card.name}.`);
+      } else {
+        logEvent(`${card.name} finds no friendly character to empower.`);
       }
       break;
     }
@@ -1406,11 +2064,7 @@ function resolveEffect(ownerKey, card) {
         spawnFloatingFx(`-${card.value}`, cardElementByUid(target.uid));
         logEvent(`${card.name} hits ${target.name} for ${card.value}.`);
       } else {
-        enemy.reputation -= 2;
-        const panel = panelForOwner(ownerKey === "player" ? "ai" : "player");
-        flashTarget(panel);
-        spawnFloatingFx("-2", panel);
-        logEvent(`${card.name} hits enemy Writer for 2.`);
+        logEvent(`${card.name} finds no strongest enemy character to hit.`);
       }
       break;
     }
@@ -1421,6 +2075,7 @@ function resolveEffect(ownerKey, card) {
         flashTarget(cardElementByUid(target.uid));
         spawnFloatingFx("KO", cardElementByUid(target.uid));
         logEvent(`${target.name} is removed by ${card.name}.`);
+        logMatchEvent({ actor: ownerKey, eventType: "card_destroyed", cardId: card?.id, cardName: card?.name, targetCardName: target?.name, targetPlayer: ownerKey === "player" ? "ai" : "player" });
       }
       break;
     }
@@ -1430,6 +2085,7 @@ function resolveEffect(ownerKey, card) {
       flashTarget(panel);
       spawnFloatingFx(`-${card.value}`, panel);
       logEvent(`${enemy.name} loses ${card.value} Reputation.`);
+      logMatchEvent({ actor: ownerKey, eventType: "damage_dealt", cardId: card?.id, cardName: card?.name, targetPlayer: ownerKey === "player" ? "ai" : "player", value: card.value, details: { targetType: "writer" } });
       break;
     }
     case "resurrect_character": {
@@ -1439,8 +2095,10 @@ function resolveEffect(ownerKey, card) {
         revived.currentMemorability = revived.memorability;
         revived.exhausted = false;
         owner.hand.push(revived);
+        void maybeResolvePendingHandDiscard(ownerKey);
         spawnFloatingFx("Revive", panelForOwner(ownerKey), "heal");
         logEvent(`${owner.name} returns ${revived.name} to hand.`);
+        logMatchEvent({ actor: ownerKey, eventType: "card_returned_to_hand", cardId: revived?.id, cardName: revived?.name, sourceZone: "discard", targetZone: "hand", details: { via: card?.name || "" } });
       }
       break;
     }
@@ -1449,22 +2107,73 @@ function resolveEffect(ownerKey, card) {
       spawnFloatingFx(`+${card.value} card`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} draws ${card.value} card(s).`);
       break;
+    case "draw_and_gain_knowledge":
+      drawCards(owner, 1);
+      spawnFloatingFx("+1 card", panelForOwner(ownerKey), "info");
+      addKnowledge(ownerKey, 1, card.name);
+      logEvent(`${owner.name} draws 1 card and gains 1 Knowledge from ${card.name}.`);
+      break;
     case "heal_self":
       owner.reputation += card.value;
       flashTarget(panelForOwner(ownerKey));
       spawnFloatingFx(`+${card.value}`, panelForOwner(ownerKey), "heal");
       logEvent(`${owner.name} restores ${card.value} Reputation.`);
+      logMatchEvent({ actor: ownerKey, eventType: "healing", cardId: card?.id, cardName: card?.name, value: card.value });
       break;
     case "gain_inspiration":
       owner.inspiration = Math.min(MAX_INSPIRATION, owner.inspiration + card.value);
       spawnFloatingFx(`+${card.value} Insp`, panelForOwner(ownerKey), "info");
       logEvent(`${owner.name} gains +${card.value} Inspiration.`);
+      logMatchEvent({ actor: ownerKey, eventType: "inspiration_gained", cardId: card?.id, cardName: card?.name, value: card.value });
       break;
     case "weaken_enemy_all":
       enemy.board.forEach((c) => {
         c.attack = Math.max(1, c.attack - card.value);
       });
       logEvent(`${enemy.name}'s team loses ${card.value} ATK.`);
+      break;
+    case "damage_enemy_by_own_attack": {
+      const target = pickHighestAttack(enemy.board);
+      if (!target) {
+        logEvent(`${card.name} finds no enemy character in conflict.`);
+        break;
+      }
+      const damage = Math.max(0, target.attack);
+      target.currentMemorability -= damage;
+      flashTarget(cardElementByUid(target.uid));
+      spawnFloatingFx(`-${damage}`, cardElementByUid(target.uid));
+      logEvent(`${card.name} causes ${target.name} to take ${damage} damage from its own ATK.`);
+      logMatchEvent({ actor: ownerKey, eventType: "damage_dealt", cardId: card?.id, cardName: card?.name, targetCardName: target?.name, targetPlayer: ownerKey === "player" ? "ai" : "player", value: damage, details: { targetType: "character" } });
+      break;
+    }
+    case "weaken_enemy_top_defense_turn": {
+      const target = pickHighestAttack(enemy.board);
+      if (!target) {
+        logEvent(`${card.name} finds no enemy character to weaken.`);
+        break;
+      }
+      applyTurnModifier(target, { defense: -2 }, card.name);
+      break;
+    }
+    case "swing_target_character_turn": {
+      const enemyTarget = pickHighestAttack(enemy.board);
+      if (!enemyTarget) {
+        const friendlyTarget = pickHighestAttack(owner.board);
+        if (!friendlyTarget) {
+          logEvent(`${card.name} finds no character to affect.`);
+          break;
+        }
+        applyTurnModifier(friendlyTarget, { attack: 1, memorability: 1 }, card.name);
+        break;
+      }
+      applyTurnModifier(enemyTarget, { attack: -1, memorability: -1 }, card.name);
+      break;
+    }
+    case "reveal_random_enemy_hand":
+      revealEnemyHand(ownerKey, "random");
+      break;
+    case "reveal_enemy_hand_all":
+      revealEnemyHand(ownerKey, "all");
       break;
     default:
       break;
@@ -1479,8 +2188,213 @@ function pickLowestMem(cards) {
   return cards.length ? [...cards].sort((a, b) => a.currentMemorability - b.currentMemorability)[0] : null;
 }
 
+function mapCardForReveal(card) {
+  return {
+    id: card.id,
+    uid: card.uid,
+    key: card.key,
+    name: card.name,
+    type: card.type,
+    cardType: card.cardType || card.type,
+    subtype: card.subtype || null,
+    author: card.author,
+    affiliation: card.affiliation || inferCardAffiliation(card),
+    isNeutral: Boolean(card.isNeutral),
+    cost: card.cost,
+    playCost: card.cost,
+    attack: card.attack || 0,
+    defense: card.defense || 0,
+    memorability: card.currentMemorability || card.memorability || 0,
+    effectText: card.effectText || "",
+    source: card.who || "",
+    functionText: card.why || "",
+    exhausted: Boolean(card.exhausted),
+    rarity: card.rarity || "common",
+    set: card.set || CORE_SET_KEY,
+    keywords: card.keywords ? [...card.keywords] : [],
+    tags: card.tags ? [...card.tags] : [],
+    themes: card.themes ? [...card.themes] : [],
+    matchesTheme: false,
+  };
+}
+
+function showTemporaryCardReveal(title, side, cards = []) {
+  window.dispatchEvent(new CustomEvent(HAND_REVEAL_EVENT_NAME, {
+    detail: {
+      title,
+      side,
+      cards: cards.map(mapCardForReveal),
+    },
+  }));
+}
+
+function ownerKeyForCard(card) {
+  if (!state || !card?.uid) return "player";
+  if (state.player.board.some((entry) => entry.uid === card.uid) || state.player.hand.some((entry) => entry.uid === card.uid)) return "player";
+  if (state.ai.board.some((entry) => entry.uid === card.uid) || state.ai.hand.some((entry) => entry.uid === card.uid)) return "ai";
+  return "player";
+}
+
+function findBattlefieldCard(uidValue) {
+  return state.player.board.find((card) => card.uid === uidValue) || state.ai.board.find((card) => card.uid === uidValue) || null;
+}
+
+function clearPendingTargeting() {
+  state.pendingTarget = null;
+}
+
+function startPendingTargeting(ownerKey, sourceCard, config = {}) {
+  state.selectedAttackerUid = null;
+  state.pendingTarget = {
+    ownerKey,
+    sourceUid: sourceCard.uid,
+    sourceName: sourceCard.name,
+    sourceCard,
+    effect: config.effect || sourceCard.effect || null,
+    prompt: config.prompt || `Choose a target for ${sourceCard.name}.`,
+  };
+  spawnFloatingFx("Choose target", panelForOwner(ownerKey), "info");
+  logEvent(state.pendingTarget.prompt);
+  render();
+}
+
+function applyTurnModifier(card, modifier, sourceName) {
+  if (!card) return;
+  card.turnModifiers = card.turnModifiers || { attack: 0, defense: 0, memorability: 0 };
+
+  if (modifier.attack) {
+    card.attack = Math.max(0, card.attack + modifier.attack);
+    card.turnModifiers.attack += modifier.attack;
+  }
+  if (modifier.defense) {
+    card.defense = Math.max(0, card.defense + modifier.defense);
+    card.turnModifiers.defense += modifier.defense;
+  }
+  if (modifier.memorability) {
+    card.currentMemorability = Math.max(0, card.currentMemorability + modifier.memorability);
+    card.turnModifiers.memorability += modifier.memorability;
+  }
+
+  const parts = [];
+  if (modifier.attack) parts.push(`${modifier.attack > 0 ? "+" : ""}${modifier.attack} ATK`);
+  if (modifier.defense) parts.push(`${modifier.defense > 0 ? "+" : ""}${modifier.defense} DEF`);
+  if (modifier.memorability) parts.push(`${modifier.memorability > 0 ? "+" : ""}${modifier.memorability} MEM`);
+  const summary = parts.join(" ");
+  const targetEl = cardElementByUid(card.uid);
+  const side = ownerKeyForCard(card);
+  flashTarget(targetEl);
+  spawnFloatingFx(summary, targetEl || panelForOwner(side), modifier.attack < 0 || modifier.defense < 0 || modifier.memorability < 0 ? "damage" : "heal", {
+    fontSize: "17px",
+    maxWidth: 220,
+  });
+  logEvent(`${card.name} is affected by ${sourceName}: ${summary} this turn.`);
+  logMatchEvent({
+    actor: side,
+    eventType: "stat_modified",
+    cardId: card?.id,
+    cardName: card?.name,
+    value: summary,
+    details: { sourceName, modifier },
+  });
+}
+
+function clearTurnModifiers() {
+  ["player", "ai"].forEach((side) => {
+    state[side].board.forEach((card) => {
+      if (!card.turnModifiers) return;
+      const { attack = 0, defense = 0, memorability = 0 } = card.turnModifiers;
+      if (attack) card.attack = Math.max(0, card.attack - attack);
+      if (defense) card.defense = Math.max(0, card.defense - defense);
+      if (memorability) card.currentMemorability = Math.max(0, card.currentMemorability - memorability);
+      card.turnModifiers = null;
+    });
+  });
+}
+
+function peekTopDeckAuthorToHand(ownerKey, count, authorName, sourceName) {
+  const owner = state[ownerKey];
+  const side = ownerKey;
+  if (!owner.deck.length) {
+    logEvent(`${sourceName} finds no cards in ${owner.name}'s deck.`);
+    spawnFloatingFx("No deck", panelForOwner(ownerKey), "info");
+    showTemporaryCardReveal(`${sourceName}: ${owner.name}'s top deck`, side, []);
+    return;
+  }
+
+  const revealCount = Math.min(count, owner.deck.length);
+  const startIndex = owner.deck.length - revealCount;
+  const revealed = owner.deck.splice(startIndex, revealCount).reverse();
+  showTemporaryCardReveal(`${sourceName}: top ${revealCount} cards`, side, revealed);
+
+  const matchIndex = revealed.findIndex((card) => card.author === authorName);
+  if (matchIndex >= 0) {
+    const picked = revealed.splice(matchIndex, 1)[0];
+    owner.hand.push(picked);
+    void maybeResolvePendingHandDiscard(ownerKey);
+    spawnFloatingFx(`+${picked.name}`, panelForOwner(ownerKey), "heal", { fontSize: "15px", maxWidth: 220 });
+    logEvent(`${sourceName} adds ${picked.name} to ${owner.name}'s hand.`);
+  } else {
+    logEvent(`${sourceName} finds no ${authorName} card among the top ${revealCount}.`);
+  }
+
+  owner.discard.push(...revealed);
+  if (revealed.length) {
+    logEvent(`${sourceName} discards ${revealed.map((card) => card.name).join(", ")}.`);
+    revealed.forEach((card) => {
+      logMatchEvent({
+        actor: ownerKey,
+        eventType: "card_discarded",
+        cardId: card?.id,
+        cardName: card?.name,
+        sourceZone: "deck",
+        targetZone: "discard",
+        details: { via: sourceName },
+      });
+    });
+  }
+}
+
+function revealEnemyHand(ownerKey, mode = "all", sourceName = "Reveal") {
+  const enemy = ownerKey === "player" ? state.ai : state.player;
+  const enemySide = ownerKey === "player" ? "ai" : "player";
+  const panel = panelForOwner(enemySide);
+  if (!enemy.hand.length) {
+    logEvent(`${sourceName}: ${enemy.name} has no cards in hand.`);
+    spawnFloatingFx("No hand", panel, "info");
+    showTemporaryCardReveal(`${sourceName}`, enemySide, []);
+    return;
+  }
+
+  if (mode === "random") {
+    const revealed = enemy.hand[Math.floor(Math.random() * enemy.hand.length)];
+    spawnFloatingFx(revealed.name, panel, "info");
+    logEvent(`${sourceName}: ${enemy.name} reveals ${revealed.name}.`);
+    showTemporaryCardReveal(`${sourceName}: ${enemy.name} reveals`, enemySide, [revealed]);
+    return;
+  }
+
+  const names = enemy.hand.map((card) => card.name).join(", ");
+  spawnFloatingFx(`${enemy.hand.length} cards`, panel, "info");
+  logEvent(`${sourceName}: ${enemy.name}'s hand is ${names}.`);
+  showTemporaryCardReveal(`${sourceName}: ${enemy.name}'s hand`, enemySide, enemy.hand);
+}
+
+function isBandersnatch(card) {
+  return card?.id === `${CORE_SET_KEY}:bandersnatch` || card?.key === "bandersnatch";
+}
+
+function canAttackWriterDirectly(attackerOwnerKey, attackerUid) {
+  const attackerOwner = state?.[attackerOwnerKey];
+  const defenderOwner = attackerOwnerKey === "player" ? state?.ai : state?.player;
+  const attacker = attackerOwner?.board?.find((card) => card.uid === attackerUid);
+  if (!attacker || attacker.exhausted || !defenderOwner) return false;
+  if (defenderOwner.board.length === 0) return true;
+  return isBandersnatch(attacker) && defenderOwner.board.length === 1;
+}
+
 function attackUnit(attackerOwnerKey, attackerUid, defenderUid) {
   if (state.winner || state.pendingQuiz) return;
+  if (attackerOwnerKey === "player" && isHandDiscardActive("player")) return;
   const attackerOwner = state[attackerOwnerKey];
   const defenderOwner = attackerOwnerKey === "player" ? state.ai : state.player;
   const attacker = attackerOwner.board.find((c) => c.uid === attackerUid);
@@ -1500,6 +2414,16 @@ function attackUnit(attackerOwnerKey, attackerUid, defenderUid) {
   attacker.exhausted = true;
   state.selectedAttackerUid = null;
   logEvent(`${attacker.name} attacks ${defender.name} (${attackerDamage}/${defenderDamage} exchanged).`);
+  logMatchEvent({
+    actor: attackerOwnerKey,
+    eventType: "damage_dealt",
+    cardId: attacker?.id,
+    cardName: attacker?.name,
+    targetCardName: defender?.name,
+    targetPlayer: attackerOwnerKey === "player" ? "ai" : "player",
+    value: attackerDamage,
+    details: { counterDamage: defenderDamage },
+  });
   emitSfx("attack_unit", { attacker: attacker.name, defender: defender.name });
   cleanupDefeated();
   checkWinner();
@@ -1508,10 +2432,11 @@ function attackUnit(attackerOwnerKey, attackerUid, defenderUid) {
 
 function attackWriter(attackerOwnerKey, attackerUid) {
   if (state.winner || state.pendingQuiz) return;
+  if (attackerOwnerKey === "player" && isHandDiscardActive("player")) return;
   const attackerOwner = state[attackerOwnerKey];
   const defenderOwner = attackerOwnerKey === "player" ? state.ai : state.player;
   const attacker = attackerOwner.board.find((c) => c.uid === attackerUid);
-  if (!attacker || attacker.exhausted || defenderOwner.board.length > 0) return;
+  if (!attacker || !canAttackWriterDirectly(attackerOwnerKey, attackerUid)) return;
 
   defenderOwner.reputation -= attacker.attack;
   attacker.exhausted = true;
@@ -1519,10 +2444,51 @@ function attackWriter(attackerOwnerKey, attackerUid) {
   const targetPanel = panelForOwner(attackerOwnerKey === "player" ? "ai" : "player");
   flashTarget(targetPanel);
   spawnFloatingFx(`-${attacker.attack}`, targetPanel);
-  logEvent(`${attacker.name} attacks Writer directly for ${attacker.attack}.`);
+  if (isBandersnatch(attacker) && defenderOwner.board.length === 1) {
+    logEvent(`${attacker.name} slips past the lone defender and attacks Writer directly for ${attacker.attack}.`);
+  } else {
+    logEvent(`${attacker.name} attacks Writer directly for ${attacker.attack}.`);
+  }
+  logMatchEvent({
+    actor: attackerOwnerKey,
+    eventType: "damage_dealt",
+    cardId: attacker?.id,
+    cardName: attacker?.name,
+    targetPlayer: attackerOwnerKey === "player" ? "ai" : "player",
+    value: attacker.attack,
+    details: { targetType: "writer" },
+  });
   emitSfx("attack_writer", { attacker: attacker.name, damage: attacker.attack });
   checkWinner();
   render();
+}
+
+function resolvePendingTarget(targetUid) {
+  const pending = state.pendingTarget;
+  if (!pending || state.winner || state.pendingQuiz || isHandDiscardActive(pending.ownerKey)) return;
+  const target = findBattlefieldCard(targetUid);
+  if (!target || target.type !== "character") return;
+
+  if (pending.effect === "swing_target_character_turn") {
+    const sourceCard = pending.sourceCard || { name: pending.sourceName, themes: [] };
+    const targetSide = ownerKeyForCard(target);
+    const friendly = targetSide === pending.ownerKey;
+    applyTurnModifier(
+      target,
+      friendly ? { attack: 1, memorability: 1 } : { attack: -1, memorability: -1 },
+      pending.sourceName
+    );
+    state[pending.ownerKey].discard.push(sourceCard);
+    logEvent(`${state[pending.ownerKey].name} plays ${pending.sourceName}.`);
+    logEvent(`${pending.sourceName} ${friendly ? "empowers" : "shrinks"} ${target.name}.`);
+    spawnFloatingFx("Effect Resolved", panelForOwner(pending.ownerKey), "info");
+    emitSfx("card_play_spell", { side: pending.ownerKey, card: pending.sourceName, rarity: sourceCard.rarity });
+    applyThemeObjective(pending.ownerKey, sourceCard);
+    clearPendingTargeting();
+    cleanupDefeated();
+    checkWinner();
+    render();
+  }
 }
 
 function playLeaveFx(cardUid, ownerKey) {
@@ -1556,6 +2522,14 @@ function cleanupDefeated() {
             owner.discard.push(card);
           }
           logEvent(`${card.name} is defeated.`);
+          logMatchEvent({
+            actor: key,
+            eventType: "card_defeated",
+            cardId: card?.id,
+            cardName: card?.name,
+            sourceZone: "board",
+            targetZone: defeatContext.preventDiscard ? "" : "discard",
+          });
           emitSfx("card_defeated", { side: key, card: card.name });
         } else {
           survivors.push(card);
@@ -1584,6 +2558,16 @@ function checkWinner() {
     logEvent(`Match over by ${reason}: ${state.winner === "player" ? "You win!" : "AI wins."}`);
     emitSfx("match_end", { winner: state.winner, reason });
     showWinnerBanner();
+    finishMatchLog({
+      winner: state.winner,
+      winCondition: reason,
+      details: {
+        playerReputation: state.player.reputation,
+        aiReputation: state.ai.reputation,
+        playerKnowledge: state.player.knowledge,
+        aiKnowledge: state.ai.knowledge,
+      },
+    });
     return true;
   }
   return false;
@@ -1612,6 +2596,8 @@ function render() {
   }
   const { player, ai } = state;
   const knowledgeToWin = state.settings.knowledgeToWin;
+  const playerDiscarding = isHandDiscardActive("player");
+  const discardStatusText = getHandDiscardStatusText("player");
   refs.playerRep.textContent = player.reputation;
   refs.playerInsp.textContent = `${player.inspiration}/${player.maxInspiration}`;
   refs.playerKnowledge.textContent = `${player.knowledge}/${knowledgeToWin}`;
@@ -1629,14 +2615,19 @@ function render() {
   refs.turnLabel.textContent = `Turn ${state.turn}`;
   refs.phaseLabel.textContent = state.winner
     ? `Winner: ${state.winner === "player" ? "You" : "AI"}`
+    : playerDiscarding
+      ? `Discard down to ${PLAYER_HAND_LIMIT} cards`
     : state.currentPlayer === "player"
       ? "Your Main Phase"
       : "AI Thinking...";
   refs.themeLabel.textContent = state.matchTheme.label;
 
   refs.drawBtn.disabled =
-    state.winner !== null || state.currentPlayer !== "player" || state.player.hasDrawnThisTurn || state.pendingQuiz;
-  refs.endTurnBtn.disabled = state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz;
+    state.winner !== null || state.currentPlayer !== "player" || state.player.hasDrawnThisTurn || state.pendingQuiz || state.pendingTarget || playerDiscarding;
+  refs.endTurnBtn.disabled = state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz || state.pendingTarget || playerDiscarding;
+  refs.handModeText.textContent = playerDiscarding ? `Discard down to ${PLAYER_HAND_LIMIT} cards. ${discardStatusText}` : "";
+  refs.handPanel.classList.toggle("discard-down-active", playerDiscarding);
+  refs.playerHandCards.classList.toggle("discard-down-active", playerDiscarding);
 
   if (!state.winner) hideWinnerBanner();
   updateTurnPanelStyles();
@@ -1670,6 +2661,7 @@ function buildCardEl(card, options = {}) {
 
   if (options.disabled) node.disabled = true;
   if (options.attackable) node.classList.add("attackable");
+  if (options.discardable) node.classList.add("discardable");
   if (options.selectedAttacker) node.classList.add("selected-attacker");
   if (options.entering) node.classList.add("entering");
   if (card.type === "character" && card.exhausted) node.classList.add("exhausted");
@@ -1680,13 +2672,12 @@ function renderPlayerHand() {
   refs.playerHandCards.innerHTML = "";
   const total = state.player.hand.length;
   const mid = (total - 1) / 2;
+  const playerDiscarding = isHandDiscardActive("player");
 
   state.player.hand.forEach((card, index) => {
-    const cost = getCardCost(state.player, card);
-    const disabled =
-      state.winner !== null || state.currentPlayer !== "player" || state.pendingQuiz || cost > state.player.inspiration;
+    const disabled = playerDiscarding ? false : !canPlayCard("player", card);
 
-    const cardEl = buildCardEl(card, { disabled });
+    const cardEl = buildCardEl(card, { disabled, discardable: playerDiscarding });
     const offset = index - mid;
     const fanRotate = total > 1 ? Math.max(-16, Math.min(16, offset * 4.2)) : 0;
     const fanLift = total > 1 ? Math.round(Math.abs(offset) * 2.4) : 0;
@@ -1696,6 +2687,10 @@ function renderPlayerHand() {
       if (disabled) return;
       cardEl.classList.add("leaving");
       setTimeout(() => {
+        if (playerDiscarding) {
+          discardPlayerHandCard(card.uid);
+          return;
+        }
         playCard("player", index);
       }, 120);
     });
@@ -1711,26 +2706,35 @@ function renderBoard(side) {
   board.forEach((card) => {
     const entering = !prevBoardUids[side].has(card.uid);
     const isSelected = state.selectedAttackerUid === card.uid;
+    const pendingTargeting = Boolean(state.pendingTarget?.effect === "swing_target_character_turn");
     const canPickAsAttacker =
-      side === "player" && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && !card.exhausted;
+      side === "player" && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && !state.pendingTarget && !isHandDiscardActive("player") && !card.exhausted;
     const canPickAsDefender =
-      side === "ai" && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && Boolean(state.selectedAttackerUid);
+      side === "ai" && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && !state.pendingTarget && !isHandDiscardActive("player") && Boolean(state.selectedAttackerUid);
+    const canPickAsCardTarget =
+      pendingTargeting && state.currentPlayer === "player" && !state.winner && !state.pendingQuiz && !isHandDiscardActive("player") && card.type === "character";
 
     const cardEl = buildCardEl(card, {
       disabled: false,
-      attackable: canPickAsDefender,
+      attackable: canPickAsDefender || canPickAsCardTarget,
       selectedAttacker: isSelected,
       entering,
     });
 
-    if (canPickAsAttacker) {
+    if (canPickAsCardTarget) {
+      cardEl.addEventListener("click", () => {
+        resolvePendingTarget(card.uid);
+      });
+    }
+
+    if (canPickAsAttacker && !canPickAsCardTarget) {
       cardEl.addEventListener("click", () => {
         state.selectedAttackerUid = state.selectedAttackerUid === card.uid ? null : card.uid;
         render();
       });
     }
 
-    if (canPickAsDefender) {
+    if (canPickAsDefender && !canPickAsCardTarget) {
       cardEl.addEventListener("click", () => {
         attackUnit("player", state.selectedAttackerUid, card.uid);
       });
@@ -1740,12 +2744,13 @@ function renderBoard(side) {
       side === "player" &&
       state.currentPlayer === "player" &&
       !state.pendingQuiz &&
+      !isHandDiscardActive("player") &&
       state.selectedAttackerUid === card.uid &&
-      state.ai.board.length === 0
+      canAttackWriterDirectly("player", card.uid)
     ) {
       const directBtn = document.createElement("button");
       directBtn.className = "button primary";
-      directBtn.textContent = "Attack AI Writer";
+      directBtn.textContent = state.ai.board.length === 1 && isBandersnatch(card) ? "Bypass to AI Writer" : "Attack AI Writer";
       directBtn.addEventListener("click", () => attackWriter("player", card.uid));
       boardRef.appendChild(directBtn);
     }
@@ -1757,7 +2762,14 @@ function renderBoard(side) {
 }
 
 function drawForPlayer() {
-  if (state.currentPlayer !== "player" || state.player.hasDrawnThisTurn || state.winner || state.pendingQuiz) return;
+  if (
+    state.currentPlayer !== "player" ||
+    state.player.hasDrawnThisTurn ||
+    state.winner ||
+    state.pendingQuiz ||
+    state.pendingTarget ||
+    isHandDiscardActive("player")
+  ) return;
   drawCards(state.player, 1);
   state.player.hasDrawnThisTurn = true;
   spawnFloatingFx("+1 card", refs.playerPanel, "info");
@@ -1773,8 +2785,12 @@ async function runTurnEndQuickCheck(ownerKey) {
   render();
 }
 
-async function endPlayerTurn() {
-  if (state.currentPlayer !== "player" || state.winner || state.pendingQuiz) return;
+async function finishPlayerTurn() {
+  logMatchEvent({
+    actor: "player",
+    eventType: "turn_end",
+    details: { hand: state.player.hand.length, board: state.player.board.length },
+  });
   resolveBoardTriggers("player", "onTurnEnd", { side: "player" });
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
     await runTurnEndQuickCheck("player");
@@ -1783,6 +2799,21 @@ async function endPlayerTurn() {
   state.currentPlayer = "ai";
   render();
   runAiTurn();
+}
+
+async function endPlayerTurn() {
+  if (
+    state.currentPlayer !== "player" ||
+    state.winner ||
+    state.pendingQuiz ||
+    state.pendingTarget ||
+    isHandDiscardActive("player")
+  ) return;
+  if (enterHandDiscardMode("player", "end-turn")) {
+    render();
+    return;
+  }
+  await finishPlayerTurn();
 }
 
 function sleep(ms) {
@@ -1807,7 +2838,7 @@ async function runAiTurn() {
     played = false;
     const affordable = state.ai.hand
       .map((card, idx) => ({ card, idx, cost: getCardCost(state.ai, card) }))
-      .filter(({ cost }) => cost <= state.ai.inspiration)
+      .filter(({ card, cost }) => cost <= state.ai.inspiration && canPlayCard("ai", card))
       .sort((a, b) => b.cost - a.cost);
 
     if (affordable.length > 0) {
@@ -1821,7 +2852,9 @@ async function runAiTurn() {
     if (state.winner) break;
     if (attacker.exhausted) continue;
 
-    if (state.player.board.length > 0) {
+    if (canAttackWriterDirectly("ai", attacker.uid)) {
+      attackWriter("ai", attacker.uid);
+    } else if (state.player.board.length > 0) {
       attackUnit("ai", attacker.uid, pickLowestMem(state.player.board).uid);
     } else {
       attackWriter("ai", attacker.uid);
@@ -1831,6 +2864,11 @@ async function runAiTurn() {
 
   if (state.winner) return;
 
+  logMatchEvent({
+    actor: "ai",
+    eventType: "turn_end",
+    details: { hand: state.ai.hand.length, board: state.ai.board.length },
+  });
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
     resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
     await runTurnEndQuickCheck("ai");
@@ -1845,7 +2883,7 @@ async function runAiTurn() {
 }
 
 function selectAttacker(uidValue) {
-  if (!state || state.winner || state.pendingQuiz || state.currentPlayer !== "player") return;
+  if (!state || state.winner || state.pendingQuiz || state.pendingTarget || isHandDiscardActive("player") || state.currentPlayer !== "player") return;
   const card = state.player.board.find((c) => c.uid === uidValue);
   if (!card || card.exhausted) return;
   state.selectedAttackerUid = state.selectedAttackerUid === uidValue ? null : uidValue;
@@ -1853,11 +2891,39 @@ function selectAttacker(uidValue) {
 }
 
 function playPlayerHandCard(uidValue) {
+  if (state?.pendingTarget || isHandDiscardActive("player")) return Promise.resolve();
   const index = state?.player?.hand?.findIndex((c) => c.uid === uidValue) ?? -1;
   if (index >= 0) {
     return playCard("player", index);
   }
   return Promise.resolve();
+}
+
+function discardPlayerHandCard(uidValue) {
+  if (!state || !isHandDiscardActive("player") || state.currentPlayer !== "player") return Promise.resolve(false);
+  const index = state.player.hand.findIndex((card) => card.uid === uidValue);
+  if (index < 0) return Promise.resolve(false);
+
+  const [discarded] = state.player.hand.splice(index, 1);
+  state.player.discard.push(discarded);
+  state.selectedAttackerUid = null;
+  spawnFloatingFx("Discarded", cardElementByUid(discarded.uid) || panelForOwner("player"), "info");
+  logEvent(`You discard ${discarded.name}.`);
+  logMatchEvent({
+    actor: "player",
+    eventType: "card_discarded",
+    cardId: discarded?.id,
+    cardName: discarded?.name,
+    sourceZone: "hand",
+    targetZone: "discard",
+  });
+  const remaining = getHandDiscardRemaining("player");
+  if (remaining > 0) {
+    logEvent(getHandDiscardStatusText("player"));
+    render();
+    return Promise.resolve(true);
+  }
+  return maybeResolvePendingHandDiscard("player");
 }
 
 window.ACGCore = {
@@ -1874,6 +2940,7 @@ window.ACGCore = {
     endTurn: endPlayerTurn,
     toggleFullscreen: toggleFullscreenMode,
     playHandCard: playPlayerHandCard,
+    discardHandCard: discardPlayerHandCard,
     selectAttacker,
     attackUnit: (defenderUid) => {
       if (!state?.selectedAttackerUid) return;
@@ -1883,6 +2950,9 @@ window.ACGCore = {
       if (!state?.selectedAttackerUid) return;
       attackWriter("player", state.selectedAttackerUid);
     },
+    resolveCardTarget: (targetUid) => {
+      resolvePendingTarget(targetUid);
+    },
   },
   constants: {
     STATE_EVENT_NAME,
@@ -1890,6 +2960,9 @@ window.ACGCore = {
     SFX_EVENT_NAME,
     isFullscreenSupported,
     getFullscreenElement,
+    canAttackWriterDirectly,
+    getCardPlayBlockReason,
+    canPlayCard,
   },
   ui: {
     setQuizHandler(handler) {
@@ -1900,6 +2973,9 @@ window.ACGCore = {
     },
   },
 };
+
+window.ACGDev = window.ACGDev || {};
+window.ACGDev.exportMatchCsv = () => exportMatchLogCsv("console");
 
 refs.drawBtn.addEventListener("click", drawForPlayer);
 refs.endTurnBtn.addEventListener("click", endPlayerTurn);
@@ -1915,6 +2991,7 @@ window.addEventListener("pointerdown", unlockAudio, { once: true });
 window.addEventListener("keydown", unlockAudio, { once: true });
 updateAudioToggleUi();
 ensureBuildBadge();
+ensureDevMatchExportButton();
 bindViewportState();
 runScreenIntro();
 

@@ -4,7 +4,10 @@ import { TurnBanner } from "../views/TurnBanner.js";
 import { StateAdapter } from "../core/stateAdapter.js";
 import { QuizOverlay } from "../views/QuizOverlay.js";
 import { WinnerOverlay } from "../views/WinnerOverlay.js";
+import { CardView } from "../views/CardView.js";
 
+const HAND_REVEAL_EVENT_NAME = "acg:hand-reveal";
+const APP_BUILD_ID = window.__ACG_APP_BUILD_ID || "LOCAL-2026-03-21-A";
 export class UIScene extends Phaser.Scene {
   constructor() {
     super("ui");
@@ -14,6 +17,9 @@ export class UIScene extends Phaser.Scene {
     this.lastWinner = null;
     this.canDirectAttack = false;
     this.fullscreenChangeHandler = null;
+    this.handRevealHandler = null;
+    this.handRevealViews = [];
+    this.handRevealTimer = null;
   }
 
   create() {
@@ -83,8 +89,19 @@ export class UIScene extends Phaser.Scene {
         wordWrap: { width: 460 },
       })
       .setOrigin(0, 0.5);
+    this.modeInfo = this.add
+      .text(w * 0.5, h - 208, "", {
+        fontFamily: "Spectral",
+        fontSize: "20px",
+        color: "#ffd3a1",
+        stroke: "#2a130c",
+        strokeThickness: 4,
+        align: "center",
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
     this.buildMarker = this.add
-      .text(18, h - 18, "BUILD d924f2c", {
+      .text(18, h - 18, `BUILD ${APP_BUILD_ID}`, {
         fontFamily: "Spectral",
         fontSize: "12px",
         color: "#d6c29a",
@@ -97,6 +114,7 @@ export class UIScene extends Phaser.Scene {
     this.turnInfo.setDepth(1150);
     this.themeInfo.setDepth(1150);
     this.themeReminder.setDepth(1150);
+    this.modeInfo.setDepth(1152);
     this.buildMarker.setDepth(1150);
     this.playerPanelDock.setDepth(1080);
     this.enemyPanelDock.setDepth(1080);
@@ -112,6 +130,25 @@ export class UIScene extends Phaser.Scene {
     this.turnBanner = new TurnBanner(this);
     this.quizOverlay = new QuizOverlay(this);
     this.winnerOverlay = new WinnerOverlay(this, () => this.adapter.actions.newGame?.());
+    this.handRevealShade = this.add.rectangle(w * 0.5, h * 0.5, w, h, 0x05070b, 0.48).setVisible(false).setAlpha(0).setDepth(1180);
+    this.handRevealShade.setInteractive();
+    this.handRevealShade.on("pointerdown", () => this.hideHandReveal());
+    this.handRevealPanel = this.add.image(w * 0.5, h * 0.46, "panel-base").setTint(0x1d1611).setVisible(false).setAlpha(0).setDepth(1181);
+    this.handRevealEdge = this.add.image(w * 0.5, h * 0.46, "panel-edge").setVisible(false).setAlpha(0).setDepth(1182);
+    this.handRevealTitle = this.add.text(w * 0.5, h * 0.2, "", {
+      fontFamily: "Cinzel",
+      fontSize: "24px",
+      color: "#f3dfb2",
+      stroke: "#1b140f",
+      strokeThickness: 4,
+      align: "center",
+    }).setOrigin(0.5).setVisible(false).setAlpha(0).setDepth(1183);
+    this.handRevealHint = this.add.text(w * 0.5, h * 0.72, "Tap anywhere to close", {
+      fontFamily: "Spectral",
+      fontSize: "15px",
+      color: "#e2d3b6",
+      align: "center",
+    }).setOrigin(0.5).setVisible(false).setAlpha(0).setDepth(1183);
 
     this.game.events.on("acg:view-state", (state) => {
       this.previous = this.current;
@@ -142,6 +179,8 @@ export class UIScene extends Phaser.Scene {
     };
     document.addEventListener("fullscreenchange", this.fullscreenChangeHandler);
     document.addEventListener("webkitfullscreenchange", this.fullscreenChangeHandler);
+    this.handRevealHandler = (e) => this.showHandReveal(e.detail || {});
+    window.addEventListener(HAND_REVEAL_EVENT_NAME, this.handRevealHandler);
 
     this.scale.on("resize", (size) => this.layout(size.width, size.height));
     this.layout(w, h);
@@ -152,6 +191,10 @@ export class UIScene extends Phaser.Scene {
       document.removeEventListener("fullscreenchange", this.fullscreenChangeHandler);
       document.removeEventListener("webkitfullscreenchange", this.fullscreenChangeHandler);
       this.fullscreenChangeHandler = null;
+    }
+    if (this.handRevealHandler) {
+      window.removeEventListener(HAND_REVEAL_EVENT_NAME, this.handRevealHandler);
+      this.handRevealHandler = null;
     }
   }
 
@@ -389,11 +432,18 @@ export class UIScene extends Phaser.Scene {
     this.themeReminder.setFontSize(profile.themeReminder.size);
     this.themeReminder.setWordWrapWidth(profile.themeReminder.width);
     this.themeReminder.setVisible(profile.themeReminder.visible !== false);
+    this.modeInfo.setPosition(w * 0.5, h - (profile.mode === "phone" ? 124 : 200));
+    this.modeInfo.setFontSize(profile.mode === "phone" ? "15px" : "20px");
     this.buildMarker.setPosition(profile.mode === "phone" ? 10 : 18, h - (profile.mode === "phone" ? 8 : 18));
     this.buildMarker.setFontSize(profile.mode === "phone" ? "10px" : "12px");
     this.turnBanner.setPosition(w * 0.5, h * 0.5);
     this.quizOverlay.layout(w, h);
     this.winnerOverlay.layout(w, h);
+    this.handRevealShade.setPosition(w * 0.5, h * 0.5).setSize(w, h);
+    this.handRevealPanel.setPosition(w * 0.5, h * 0.46).setDisplaySize(Math.min(860, w * 0.72), Math.min(420, h * 0.5));
+    this.handRevealEdge.setPosition(w * 0.5, h * 0.46).setDisplaySize(Math.min(872, w * 0.73), Math.min(432, h * 0.52));
+    this.handRevealTitle.setPosition(w * 0.5, h * 0.22);
+    this.handRevealHint.setPosition(w * 0.5, h * 0.7);
     this.updateFullscreenButton();
   }
 
@@ -412,6 +462,64 @@ export class UIScene extends Phaser.Scene {
     this.fullscreenBtn.setEnabled(supported);
   }
 
+  clearHandRevealCards() {
+    this.handRevealViews.forEach((view) => view.destroy());
+    this.handRevealViews = [];
+  }
+
+  showHandReveal(detail = {}) {
+    this.hideHandReveal(true);
+    const cards = detail.cards || [];
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const panelW = Math.min(860, w * 0.72);
+    const title = detail.title || "Revealed hand";
+
+    this.handRevealShade.setVisible(true).setAlpha(0.48);
+    this.handRevealPanel.setVisible(true).setAlpha(0.88);
+    this.handRevealEdge.setVisible(true).setAlpha(0.92);
+    this.handRevealTitle.setText(title).setVisible(true).setAlpha(1);
+    this.handRevealHint.setText(cards.length ? "Tap anywhere to close" : "Tap anywhere to continue").setVisible(true).setAlpha(0.92);
+
+    if (!cards.length) {
+      this.handRevealTitle.setText(`${title}\nNo hand`);
+      this.handRevealTimer = this.time.delayedCall(2200, () => this.hideHandReveal());
+      return;
+    }
+
+    const spread = Math.min(154, panelW / Math.max(cards.length, 4));
+    const startX = w * 0.5 - ((cards.length - 1) * spread) / 2;
+    cards.forEach((card, index) => {
+      const view = new CardView(this, card, {
+        interactive: false,
+        disableHover: true,
+        disableInspect: true,
+      });
+      view.setLayout("default");
+      view.updateData(card);
+      view.setPosition(startX + index * spread, h * 0.49);
+      view.setScale(Math.min(1.24, cards.length > 4 ? 1.08 : 1.2));
+      view.setAngle((index - (cards.length - 1) / 2) * 3.4);
+      view.setDepth(1184 + index);
+      this.handRevealViews.push(view);
+    });
+
+    this.handRevealTimer = this.time.delayedCall(3200, () => this.hideHandReveal());
+  }
+
+  hideHandReveal(immediate = false) {
+    if (this.handRevealTimer) {
+      this.handRevealTimer.remove(false);
+      this.handRevealTimer = null;
+    }
+    this.handRevealShade.setVisible(false).setAlpha(0);
+    this.handRevealPanel.setVisible(false).setAlpha(0);
+    this.handRevealEdge.setVisible(false).setAlpha(0);
+    this.handRevealTitle.setVisible(false).setAlpha(0);
+    this.handRevealHint.setVisible(false).setAlpha(0);
+    this.clearHandRevealCards();
+  }
+
   renderState() {
     if (!this.current) return;
     const previous = this.previous;
@@ -420,13 +528,18 @@ export class UIScene extends Phaser.Scene {
     this.enemyPanel.update(this.current.ai, this.current.knowledgeToWin, this.current.currentPlayer === "ai");
 
     const selected = this.current.player.board.find((card) => card.uid === this.current.selectedAttackerUid);
+    const canSelectedAttackWriterDirectly = selected
+      ? Boolean(window.ACGCore?.constants?.canAttackWriterDirectly?.("player", selected.uid))
+      : false;
     this.canDirectAttack = Boolean(
       !this.current.winner &&
         !this.current.pendingQuiz &&
+        !this.current.pendingHandDiscard &&
+        !this.current.pendingTarget &&
         this.current.currentPlayer === "player" &&
         selected &&
         !selected.exhausted &&
-        this.current.ai.board.length === 0
+        canSelectedAttackWriterDirectly
     );
     this.enemyPanel.setTargetable(this.canDirectAttack);
     this.enemyPanelDock.input.enabled = this.canDirectAttack;
@@ -444,10 +557,26 @@ export class UIScene extends Phaser.Scene {
       );
     }
 
-    const disableActions = Boolean(this.current.winner || this.current.pendingQuiz || this.current.currentPlayer !== "player");
+    const disableActions = Boolean(
+      this.current.winner ||
+      this.current.pendingQuiz ||
+      this.current.pendingTarget ||
+      this.current.pendingHandDiscard ||
+      this.current.currentPlayer !== "player"
+    );
     this.drawBtn.setEnabled(!disableActions && !this.current.player.hasDrawnThisTurn);
     this.endTurnBtn.setEnabled(!disableActions);
     this.updateFullscreenButton();
+
+    if (this.current.pendingHandDiscard) {
+      this.modeInfo.setText(
+        `Discard down to ${this.current.pendingHandDiscard.handLimit} cards\n${this.current.pendingHandDiscard.prompt}`
+      );
+      this.modeInfo.setAlpha(1);
+    } else {
+      this.modeInfo.setText("");
+      this.modeInfo.setAlpha(0);
+    }
 
     if (previous) {
       if (previous.player.inspiration !== this.current.player.inspiration || previous.player.reputation !== this.current.player.reputation) {

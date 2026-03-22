@@ -58,10 +58,12 @@ export class FXScene extends Phaser.Scene {
     const txt = this.add
       .text(x, y, detail.text || "HIT", {
         fontFamily: "Cinzel",
-        fontSize: "28px",
+        fontSize: detail.fontSize || (detail.kind === "info" ? "22px" : "28px"),
         color,
         stroke: "#120b08",
         strokeThickness: 4,
+        align: "center",
+        wordWrap: detail.maxWidth ? { width: detail.maxWidth, useAdvancedWrap: true } : undefined,
       })
       .setOrigin(0.5)
       .setDepth(900);

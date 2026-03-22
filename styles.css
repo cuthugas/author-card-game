@@ -315,6 +315,19 @@ body:not(.debug-dom-ui) #fx-layer {
   font-size: 0.84rem;
 }
 
+.hand-mode-text {
+  min-height: 1.2em;
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffd996;
+}
+
+.hand-panel.discard-down-active {
+  border-color: rgba(224, 158, 95, 0.62);
+  box-shadow: 0 0 0 1px rgba(224, 158, 95, 0.18), inset 0 0 28px rgba(103, 34, 18, 0.16);
+}
+
 .hand {
   display: flex;
   gap: 6px;
@@ -415,6 +428,19 @@ body:not(.debug-dom-ui) #fx-layer {
 .hand .card {
   transform: rotate(var(--fan-rotate, 0deg)) translateY(var(--fan-lift, 0px));
   transform-origin: center 130%;
+}
+
+.hand.discard-down-active .card.discardable {
+  cursor: pointer;
+}
+
+.card.discardable {
+  outline: 2px solid rgba(216, 125, 79, 0.86);
+  box-shadow: 0 0 0 2px rgba(216, 125, 79, 0.28), 0 0 18px rgba(216, 125, 79, 0.22), 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.card.discardable:hover {
+  box-shadow: 0 0 0 2px rgba(236, 151, 108, 0.38), 0 0 22px rgba(236, 151, 108, 0.28), 0 8px 16px rgba(0, 0, 0, 0.34);
 }
 
 .card .title { font-size: 0.82rem; font-weight: 800; }

@@ -25,6 +25,9 @@ const TYPE_SKINS = {
   },
 };
 
+const INSPECT_DELAY_MS = 2000;
+let activeInspectedCardView = null;
+
 function clampText(text = "", maxLength = 128) {
   const clean = (text || "").replace(/\s+/g, " ").trim();
   if (!clean) return "";
@@ -42,6 +45,18 @@ export class CardView extends Phaser.GameObjects.Container {
     this.selected = false;
     this.selectionPulseTween = null;
     this.layoutMode = opts.layoutMode || "default";
+    this.inspectTimer = null;
+    this.inspectSource = null;
+    this.pressActive = false;
+    this.inspectLocked = false;
+    this.inspectTween = null;
+    this.inspectHomeTransform = null;
+    this.inspectHomeShadowAlpha = null;
+    this.inspectHomeAlpha = null;
+    this.inspectRaised = false;
+    this.hoverTween = null;
+    this.hoverShadowTween = null;
+    this.settling = false;
 
     this.selectionGlow = scene.add.image(0, 0, "button-glow").setDisplaySize(222, 292).setTint(0xf1ca74).setAlpha(0);
     this.shadow = scene.add.image(6, 10, "card-shadow").setDisplaySize(182, 250).setAlpha(0.78);
@@ -112,9 +127,9 @@ export class CardView extends Phaser.GameObjects.Container {
     this.iconDef = scene.add.image(-2, 86, "icon-defense").setDisplaySize(18, 18);
     this.iconMem = scene.add.image(46, 86, "icon-mem").setDisplaySize(18, 18);
     this.statBg = scene.add.rectangle(0, 86, 142, 38, 0x171b23, 0.9).setStrokeStyle(1, 0xa67f4e, 0.66);
-    this.statAtk = scene.add.text(-24, 86, "0", { fontFamily: "Cinzel", fontSize: "14px", color: "#ffd0c8" }).setOrigin(0.5);
-    this.statDef = scene.add.text(24, 86, "0", { fontFamily: "Cinzel", fontSize: "14px", color: "#cae8fa" }).setOrigin(0.5);
-    this.statMem = scene.add.text(68, 86, "0", { fontFamily: "Cinzel", fontSize: "14px", color: "#ffe9bc" }).setOrigin(0.5);
+    this.statAtk = scene.add.text(-24, 86, "0", { fontFamily: "Cinzel", fontSize: "14px", color: "#ffd0c8", stroke: "#130d09", strokeThickness: 3 }).setOrigin(0.5);
+    this.statDef = scene.add.text(24, 86, "0", { fontFamily: "Cinzel", fontSize: "14px", color: "#cae8fa", stroke: "#130d09", strokeThickness: 3 }).setOrigin(0.5);
+    this.statMem = scene.add.text(68, 86, "0", { fontFamily: "Cinzel", fontSize: "14px", color: "#ffe9bc", stroke: "#130d09", strokeThickness: 3 }).setOrigin(0.5);
 
     this.tooltip = scene.add.container(0, -146).setVisible(false);
     const tipBg = scene.add.image(0, 0, "panel-base").setDisplaySize(232, 86).setTint(0x1c1510);
@@ -164,23 +179,41 @@ export class CardView extends Phaser.GameObjects.Container {
     this.inputTarget = this.frame;
     this.inputTarget.setInteractive({ useHandCursor: true });
     this.inputEnabled = true;
+    this.actionEnabled = true;
     this.baseY = this.y;
     this.baseScale = 1;
     this.baseAngle = this.angle;
 
     this.inputTarget.on("pointerover", () => {
+      if (this.settling) return;
       if (opts.interactive) this.hover(true);
       if (this.layoutMode !== "phone" && this.isTruncated) this.tooltip.setVisible(true);
+      this.queueInspect("hover");
     });
     this.inputTarget.on("pointerout", () => {
       if (opts.interactive) this.hover(false);
       this.tooltip.setVisible(false);
+      this.cancelInspect("hover");
     });
 
     if (opts.interactive) {
       this.inputTarget.on("pointerdown", (pointer, localX, localY, event) => {
+        if (this.settling) return;
         event?.stopPropagation();
-        opts.onClick?.(this.card);
+        this.pressActive = true;
+        this.inspectLocked = false;
+        this.queueInspect("press");
+      });
+      this.inputTarget.on("pointerup", (pointer, localX, localY, event) => {
+        event?.stopPropagation();
+        const shouldClick = this.pressActive && !this.inspectLocked && this.actionEnabled;
+        this.pressActive = false;
+        this.cancelInspect("press");
+        if (shouldClick) opts.onClick?.(this.card);
+      });
+      this.inputTarget.on("pointerupoutside", () => {
+        this.pressActive = false;
+        this.cancelInspect("press");
       });
     }
 
@@ -203,6 +236,24 @@ export class CardView extends Phaser.GameObjects.Container {
   getTypeLabel(card) {
     const skin = TYPE_SKINS[card.type] || TYPE_SKINS.character;
     return card.type === "character" ? skin.tag : card.subtype === "literary_device" ? "DEVICE" : skin.tag;
+  }
+
+  applyStatRowLayout(compact = false) {
+    const rowY = compact ? 70 : 76;
+    const bgWidth = compact ? 150 : 144;
+    const cellCenters = compact ? [-44, 0, 44] : [-40, 0, 40];
+    const iconOffset = compact ? -9 : -8;
+    const valueOffset = compact ? 8 : 7;
+    const iconSize = compact ? 18 : 17;
+    const valueSize = compact ? "15px" : "13px";
+
+    this.statBg.setPosition(0, rowY).setSize(bgWidth, compact ? 38 : 34);
+    this.iconAtk.setPosition(cellCenters[0] + iconOffset, rowY).setDisplaySize(iconSize, iconSize);
+    this.iconDef.setPosition(cellCenters[1] + iconOffset, rowY).setDisplaySize(iconSize, iconSize);
+    this.iconMem.setPosition(cellCenters[2] + iconOffset, rowY).setDisplaySize(iconSize, iconSize);
+    this.statAtk.setPosition(cellCenters[0] + valueOffset, rowY).setFontSize(valueSize);
+    this.statDef.setPosition(cellCenters[1] + valueOffset, rowY).setFontSize(valueSize);
+    this.statMem.setPosition(cellCenters[2] + valueOffset, rowY).setFontSize(valueSize);
   }
 
   setLayout(mode = "default") {
@@ -231,18 +282,12 @@ export class CardView extends Phaser.GameObjects.Container {
 
     this.author.setPosition(0, compact ? -38 : -52).setFontSize(compact ? "13px" : "12px");
 
-    this.bodyZone.setPosition(0, compact ? 2 : 10).setSize(compact ? 144 : 142, compact ? 52 : 100);
-    this.body.setPosition(-62, compact ? -18 : -32).setFontSize(compact ? "13px" : "12px");
+    this.bodyZone.setPosition(0, compact ? -2 : 2).setSize(compact ? 144 : 142, compact ? 44 : 84);
+    this.body.setPosition(-62, compact ? -24 : -36).setFontSize(compact ? "13px" : "12px");
     this.body.setWordWrapWidth(compact ? 124 : 128);
     this.body.setLineSpacing(compact ? 2 : 3);
 
-    this.iconAtk.setPosition(compact ? -56 : -50, compact ? 74 : 86).setDisplaySize(compact ? 19 : 18, compact ? 19 : 18);
-    this.iconDef.setPosition(compact ? 0 : -2, compact ? 74 : 86).setDisplaySize(compact ? 19 : 18, compact ? 19 : 18);
-    this.iconMem.setPosition(compact ? 56 : 46, compact ? 74 : 86).setDisplaySize(compact ? 19 : 18, compact ? 19 : 18);
-    this.statBg.setPosition(0, compact ? 78 : 86).setSize(compact ? 148 : 142, compact ? 48 : 38);
-    this.statAtk.setPosition(compact ? -38 : -24, compact ? 78 : 86).setFontSize(compact ? "18px" : "14px");
-    this.statDef.setPosition(compact ? 18 : 24, compact ? 78 : 86).setFontSize(compact ? "18px" : "14px");
-    this.statMem.setPosition(compact ? 72 : 68, compact ? 78 : 86).setFontSize(compact ? "18px" : "14px");
+    this.applyStatRowLayout(compact);
 
     this.tooltip.setPosition(0, compact ? -156 : -146);
     this.tooltip.setVisible(false);
@@ -273,6 +318,7 @@ export class CardView extends Phaser.GameObjects.Container {
     this.cost.setText(`${card.playCost ?? card.cost ?? 0}`);
 
     const isCharacter = card.type === "character";
+    this.statBg.setVisible(isCharacter);
     this.iconAtk.setVisible(isCharacter);
     this.iconDef.setVisible(isCharacter);
     this.iconMem.setVisible(isCharacter);
@@ -352,6 +398,177 @@ export class CardView extends Phaser.GameObjects.Container {
     this.baseAngle = this.angle;
   }
 
+  clearHoverTweens() {
+    if (this.hoverTween) {
+      this.hoverTween.stop();
+      this.hoverTween = null;
+    }
+    if (this.hoverShadowTween) {
+      this.hoverShadowTween.stop();
+      this.hoverShadowTween = null;
+    }
+  }
+
+  queueInspect(source) {
+    if (this.opts.disableInspect || !this.inputEnabled || this.settling) return;
+    if (source === "hover" && this.pressActive) return;
+    this.clearInspectTimer();
+    this.inspectTimer = window.setTimeout(() => {
+      this.inspectTimer = null;
+      this.inspectSource = source;
+      this.inspectLocked = source === "press";
+      this.beginInspect();
+    }, INSPECT_DELAY_MS);
+  }
+
+  cancelInspect(source = null) {
+    this.clearInspectTimer();
+    if (!this.inspectSource) return;
+    if (source && this.inspectSource !== source) return;
+    this.endInspect();
+    this.inspectSource = null;
+    this.inspectLocked = false;
+  }
+
+  clearInspectTimer() {
+    if (!this.inspectTimer) return;
+    window.clearTimeout(this.inspectTimer);
+    this.inspectTimer = null;
+  }
+
+  beginInspect() {
+    if (activeInspectedCardView && activeInspectedCardView !== this) {
+      activeInspectedCardView.forceEndInspect();
+    }
+
+    activeInspectedCardView = this;
+    this.clearHoverTweens();
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.killTweensOf(this.shadow);
+    this.inspectHomeTransform = {
+      x: this.x,
+      y: this.y,
+      scaleX: this.scaleX,
+      scaleY: this.scaleY,
+      angle: this.angle,
+      depth: this.depth,
+    };
+    this.inspectHomeShadowAlpha = this.shadow.alpha;
+    this.inspectHomeAlpha = this.alpha;
+
+    this.scene.liftViewForInspect?.(this);
+    if (this.parentContainer?.bringToTop) {
+      this.parentContainer.bringToTop(this);
+    }
+    this.inspectRaised = true;
+    this.setDepth(1600);
+    this.setAlpha(1);
+
+    const shiftY = this.inspectHomeTransform.y > this.scene.scale.height * 0.62 ? 54 : 28;
+    const scaleBoost = this.inspectHomeTransform.scaleX >= 0.9 ? 1.22 : 1.16;
+    const targetScale = Math.max(
+      this.inspectHomeTransform.scaleX * scaleBoost,
+      this.layoutMode === "phone" ? 1.18 : 1.38
+    );
+    this.inspectTween = this.scene.tweens.add({
+      targets: this,
+      y: this.inspectHomeTransform.y - shiftY,
+      scaleX: targetScale,
+      scaleY: targetScale,
+      angle: this.inspectHomeTransform.angle * 0.18,
+      duration: 170,
+      ease: "Quad.Out",
+    });
+    this.scene.tweens.add({
+      targets: this.shadow,
+      alpha: 1,
+      duration: 150,
+      ease: "Quad.Out",
+    });
+  }
+
+  endInspect(force = false) {
+    if (!this.inspectHomeTransform) return;
+    this.clearHoverTweens();
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.killTweensOf(this.shadow);
+    const layoutTarget = this.layoutTarget;
+    const target = layoutTarget
+      ? {
+          x: layoutTarget.x ?? this.inspectHomeTransform.x,
+          y: layoutTarget.y ?? this.inspectHomeTransform.y,
+          scaleX: layoutTarget.scale ?? this.inspectHomeTransform.scaleX,
+          scaleY: layoutTarget.scale ?? this.inspectHomeTransform.scaleY,
+          angle: layoutTarget.angle ?? this.inspectHomeTransform.angle,
+          depth: layoutTarget.depth ?? this.inspectHomeTransform.depth,
+        }
+      : this.inspectHomeTransform;
+    const finalize = () => {
+      if (this.inspectRaised) {
+        this.setDepth(target.depth ?? this.depth);
+        this.inspectRaised = false;
+      }
+      this.scene.restoreViewFromInspect?.(this);
+      const latestTarget = this.layoutTarget
+        ? {
+            x: this.layoutTarget.x,
+            y: this.layoutTarget.y,
+            angle: this.layoutTarget.angle,
+            scale: this.layoutTarget.scale,
+            depth: this.layoutTarget.depth,
+          }
+        : {
+            x: target.x,
+            y: target.y,
+            angle: target.angle,
+            scale: target.scaleX,
+            depth: target.depth,
+          };
+      this.setAlpha(this.inspectHomeAlpha ?? 1);
+      this.scene.finalizeViewTransform?.(this, latestTarget, this.layoutRevision ?? null, this.layoutDomain ?? null);
+      if (activeInspectedCardView === this) activeInspectedCardView = null;
+      this.inspectHomeTransform = null;
+      this.inspectHomeShadowAlpha = null;
+      this.inspectHomeAlpha = null;
+    };
+
+    if (force) {
+      this.setPosition(target.x, target.y);
+      this.setScale(target.scaleX, target.scaleY);
+      this.setAngle(target.angle);
+      this.setAlpha(this.inspectHomeAlpha ?? 1);
+      this.shadow.setAlpha(this.inspectHomeShadowAlpha ?? 0.78);
+      finalize();
+      return;
+    }
+
+    this.inspectTween = this.scene.tweens.add({
+      targets: this,
+      x: target.x,
+      y: target.y,
+      scaleX: target.scaleX,
+      scaleY: target.scaleY,
+      angle: target.angle,
+      duration: 150,
+      ease: "Quad.Out",
+      onComplete: finalize,
+    });
+    this.scene.tweens.add({
+      targets: this.shadow,
+      alpha: this.inspectHomeShadowAlpha ?? 0.78,
+      duration: 140,
+      ease: "Quad.Out",
+    });
+  }
+
+  forceEndInspect() {
+    this.endInspect(true);
+    this.inspectSource = null;
+    this.inspectLocked = false;
+    this.pressActive = false;
+    this.clearInspectTimer();
+  }
+
   setThemeMatch(enabled) {
     this.themeGlow.setAlpha(enabled ? 0.22 : 0);
     this.themeGem.setVisible(enabled);
@@ -384,19 +601,32 @@ export class CardView extends Phaser.GameObjects.Container {
   }
 
   hover(isHover) {
-    if (this.opts.disableHover) return;
-    this.scene.tweens.add({
+    if (this.opts.disableHover || this.settling) return;
+    if (this.inspectRaised) return;
+    this.clearHoverTweens();
+    this.hoverTween = this.scene.tweens.add({
       targets: this,
       y: isHover ? this.baseY - 16 : this.baseY,
       scaleX: isHover ? this.baseScale * 1.07 : this.baseScale,
       scaleY: isHover ? this.baseScale * 1.07 : this.baseScale,
       duration: 135,
       ease: "Quad.Out",
+      onComplete: () => {
+        this.hoverTween = null;
+      },
     });
-    this.scene.tweens.add({ targets: this.shadow, alpha: isHover ? 0.99 : 0.78, duration: 120 });
+    this.hoverShadowTween = this.scene.tweens.add({
+      targets: this.shadow,
+      alpha: isHover ? 0.99 : 0.78,
+      duration: 120,
+      onComplete: () => {
+        this.hoverShadowTween = null;
+      },
+    });
   }
 
   animateOut(onDone) {
+    this.forceEndInspect();
     this.setInputEnabled(false);
     this.scene.tweens.add({
       targets: this,
@@ -416,5 +646,23 @@ export class CardView extends Phaser.GameObjects.Container {
     this.inputEnabled = enabled;
     if (!this.inputTarget.input) return;
     this.inputTarget.input.enabled = enabled;
+    if (!enabled) {
+      this.pressActive = false;
+      this.clearHoverTweens();
+      this.forceEndInspect();
+    }
+  }
+
+  setActionEnabled(enabled) {
+    this.actionEnabled = enabled;
+  }
+
+  setSettling(active) {
+    this.settling = Boolean(active);
+    if (!this.settling) return;
+    this.tooltip.setVisible(false);
+    this.pressActive = false;
+    this.clearInspectTimer();
+    this.clearHoverTweens();
   }
 }
