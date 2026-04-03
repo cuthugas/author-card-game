@@ -556,6 +556,61 @@ body:not(.debug-dom-ui) #fx-layer {
 .quiz-option.correct { background: #caead8; }
 .quiz-option.incorrect { background: #f4c7c7; }
 
+.author-select-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 13, 25, 0.78);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 36;
+}
+
+.author-select-content {
+  width: min(92vw, 420px);
+  border-radius: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, #f7f0dd, #e7d6ad);
+  color: #231e13;
+  padding: 18px 16px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.author-select-content h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.author-select-content p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.author-select-label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.author-select-label select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.84);
+  color: #231e13;
+  padding: 9px 10px;
+  font-size: 0.92rem;
+}
+
+.author-select-passive {
+  min-height: 2.8em;
+  font-size: 0.82rem;
+  color: #4a3520;
+}
+
 .fx-layer { pointer-events: none; position: fixed; inset: 0; z-index: 25; }
 .floating-hit {
   position: fixed;

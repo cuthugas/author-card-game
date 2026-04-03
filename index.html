@@ -155,6 +155,19 @@
       </div>
     </div>
 
+    <div id="author-select-modal" class="author-select-modal hidden" role="dialog" aria-modal="true" aria-labelledby="author-select-title">
+      <div class="author-select-content">
+        <h2 id="author-select-title">Choose Your Author</h2>
+        <p>Select your author for this match. The AI will randomly choose from the same supported authors, and mirror matches are allowed.</p>
+        <label class="author-select-label" for="player-author-select">
+          Your Author
+          <select id="player-author-select"></select>
+        </label>
+        <p id="player-author-passive" class="author-select-passive"></p>
+        <button id="author-select-confirm-btn" class="button primary">Start Match</button>
+      </div>
+    </div>
+
     <template id="card-template">
       <button class="card" type="button">
         <span class="rarity-badge"></span>

@@ -1,0 +1,584 @@
+{
+  "schema_version": 4,
+  "metadata": {
+    "generated_on": "2026-04-02",
+    "source_file": "app.js",
+    "scope": "Implemented live card pool including Bridge Set 0 and Anchor Identity Pass 1",
+    "notes": [
+      "Authors are the visible identity layer.",
+      "Mechanic tags are the main synergy layer.",
+      "Support-family metadata remains optional and internal-facing."
+    ]
+  },
+  "identity_model": {
+    "primary_layer": "author",
+    "synergy_layer": "mechanic_tags",
+    "support_layer_policy": "minimal_optional_only",
+    "canonical_authors": ["Shakespeare", "Lewis Carroll", "Neutral"],
+    "internal_support_families": ["literary_device", "writing_support", "classroom_support"]
+  },
+  "mechanic_tags": [
+    {
+      "name": "tempo",
+      "definition": "Accelerates pacing through card draw, inspiration gain, efficient hand refill, or other initiative-positive effects."
+    },
+    {
+      "name": "pressure",
+      "definition": "Pushes damage races with aggressive statlines, direct reputation damage, or ways to bypass normal blocking."
+    },
+    {
+      "name": "control",
+      "definition": "Removes, snipes, or sharply punishes opposing characters to swing board control."
+    },
+    {
+      "name": "reveal",
+      "definition": "Looks at hidden cards or digs through deck information to improve selection and planning."
+    },
+    {
+      "name": "recursion",
+      "definition": "Returns defeated or discarded cards to hand or otherwise recovers spent material."
+    },
+    {
+      "name": "buff",
+      "definition": "Improves friendly character stats or memorability."
+    },
+    {
+      "name": "debuff",
+      "definition": "Reduces enemy combat stats or weakens them for the turn."
+    },
+    {
+      "name": "defeat_trigger",
+      "definition": "Generates value when the card is defeated or invites favorable sacrifice patterns."
+    },
+    {
+      "name": "knowledge",
+      "definition": "Directly advances the knowledge track or converts literary progress into concrete gameplay value."
+    },
+    {
+      "name": "sustain",
+      "definition": "Extends staying power through healing, sticky bodies, or other durability-oriented play patterns."
+    }
+  ],
+  "bridge_set_0": {
+    "purpose": "Deepen the weakest mechanic clusters without adding a new faction layer or large subsystem.",
+    "cards_added": [
+      "Looking-Glass Return",
+      "Ophelia",
+      "Crowd Murmur",
+      "Margin Notes",
+      "Read the Room",
+      "Rough Draft",
+      "Stay of Execution",
+      "Dramatic Irony"
+    ],
+    "strengthened_tags": ["recursion", "defeat_trigger", "debuff", "knowledge", "reveal", "tempo", "sustain"],
+    "archetypes_helped": [
+      "Carroll Tempo Reveal",
+      "Shakespeare Pressure Defeat",
+      "Knowledge Control Midrange",
+      "Sticky Recursion Value"
+    ],
+    "helper_logic_added": [
+      "Per-turn revealedEnemyCards flag on each player",
+      "Low-cost discard recursion helper",
+      "Two-target temporary debuff helper",
+      "Knowledge-threshold payoff helper",
+      "Top-of-deck type filtering helper",
+      "Friendly memorability restore helper",
+      "Reveal plus tagged-recursion bridge helper"
+    ]
+  },
+  "anchor_identity_pass_1": {
+    "purpose": "Bring the named signature cards up to the clarity level of the newer support shell without raising rules complexity.",
+    "revised_cards": [
+      {
+        "name": "Hamlet",
+        "old_role": "efficient pressure filler",
+        "new_role": "reveal/knowledge engine",
+        "archetype": "Shakespeare Pressure Defeat, Knowledge Control Midrange",
+        "card_function": "engine"
+      },
+      {
+        "name": "Alice",
+        "old_role": "resilient Carroll body",
+        "new_role": "reveal-to-tempo payoff",
+        "archetype": "Carroll Tempo Reveal",
+        "card_function": "payoff"
+      },
+      {
+        "name": "Lady Macbeth",
+        "old_role": "generic midcurve stat stick",
+        "new_role": "pressure/debuff bridge",
+        "archetype": "Shakespeare Pressure Defeat, Debuff Control",
+        "card_function": "bridge"
+      },
+      {
+        "name": "Queen of Hearts",
+        "old_role": "plain aggressive body",
+        "new_role": "volatile reveal-to-pressure payoff",
+        "archetype": "Carroll Tempo Reveal",
+        "card_function": "pressure_piece"
+      }
+    ],
+    "new_card_added": {
+      "name": "The Annotator",
+      "role": "durable knowledge payoff (later replaced in the live pool)",
+      "reason": "Knowledge needed a visible payoff card, but the later live-pool replacement moved that role onto a non-character knowledge plot for better flavor fit and simpler testing."
+    },
+    "extra_sustain_card_added": false,
+    "extra_sustain_reason": "Stay of Execution already added a simple recovery tool, so this pass focused on clearer anchors first and leaves pre-defeat protection for future testing if it still proves necessary."
+  },
+  "label_normalization": [
+    {
+      "old_label": "Wonderland",
+      "new_label": "Lewis Carroll",
+      "reason": "Carroll-flavored support cards should reinforce the visible author layer instead of behaving like a parallel faction."
+    },
+    {
+      "old_label": "Literary Device",
+      "new_label": "Neutral + support_family=literary_device",
+      "reason": "Useful internal grouping metadata, but not a player-facing identity."
+    },
+    {
+      "old_label": "Writing",
+      "new_label": "Neutral + support_family=writing_support",
+      "reason": "Generic process-support cards, not authored identity cards."
+    },
+    {
+      "old_label": "Classroom",
+      "new_label": "Neutral + support_family=classroom_support",
+      "reason": "Internal support metadata, not a visible faction layer."
+    }
+  ],
+  "cards": [
+    {
+      "name": "Hamlet",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["reveal", "knowledge"],
+      "support_family": null,
+      "notes": "Now a Shakespeare reveal/knowledge engine that turns reflection into concrete setup."
+    },
+    {
+      "name": "Macbeth",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["pressure"],
+      "support_family": null,
+      "notes": "High-attack glass-cannon finisher."
+    },
+    {
+      "name": "Juliet",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["defeat_trigger", "pressure"],
+      "support_family": null,
+      "notes": "Low-durability tragic attacker that still pushes writer damage when removed."
+    },
+    {
+      "name": "Lady Macbeth",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["pressure", "debuff"],
+      "support_family": null,
+      "notes": "Now a manipulation bridge that opens attack windows by shrinking the enemy's best unit."
+    },
+    {
+      "name": "Prospero",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["defeat_trigger", "control"],
+      "support_family": null,
+      "notes": "Large body that threatens a board swing even after defeat."
+    },
+    {
+      "name": "The Weird Sisters",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["reveal", "tempo"],
+      "support_family": null,
+      "notes": "Deck-dig setup piece for Shakespeare hands."
+    },
+    {
+      "name": "Alice",
+      "author": "Lewis Carroll",
+      "type": "character",
+      "tags": ["tempo", "reveal"],
+      "support_family": null,
+      "notes": "Now a true Carroll reveal payoff that converts curiosity into card flow."
+    },
+    {
+      "name": "Cheshire Cat",
+      "author": "Lewis Carroll",
+      "type": "character",
+      "tags": ["recursion", "defeat_trigger"],
+      "support_family": null,
+      "notes": "Sticky value piece that converts defeat into hand retention."
+    },
+    {
+      "name": "White Rabbit",
+      "author": "Lewis Carroll",
+      "type": "character",
+      "tags": ["tempo"],
+      "support_family": null,
+      "notes": "Cheap cantrip body that keeps turns moving."
+    },
+    {
+      "name": "Bandersnatch",
+      "author": "Lewis Carroll",
+      "type": "character",
+      "tags": ["pressure"],
+      "support_family": null,
+      "notes": "Conditional bypass attacker that punishes lone blockers."
+    },
+    {
+      "name": "Queen of Hearts",
+      "author": "Lewis Carroll",
+      "type": "character",
+      "tags": ["pressure", "reveal"],
+      "support_family": null,
+      "notes": "Now a volatile reveal payoff that converts exposed weakness into direct writer pressure."
+    },
+    {
+      "name": "Jabberwock",
+      "author": "Lewis Carroll",
+      "type": "character",
+      "tags": ["pressure", "sustain"],
+      "support_family": null,
+      "notes": "Big legendary body that wins through oversized combat presence."
+    },
+    {
+      "name": "Iambic Pentameter",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["buff", "knowledge"],
+      "support_family": "literary_device",
+      "notes": "Stat enhancement with attached educational check."
+    },
+    {
+      "name": "Soliloquy",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["control", "knowledge"],
+      "support_family": "literary_device",
+      "notes": "Targeted damage spell that doubles as literary-device support."
+    },
+    {
+      "name": "Vorpal Strike",
+      "author": "Lewis Carroll",
+      "type": "plot",
+      "tags": ["control", "pressure"],
+      "support_family": null,
+      "notes": "Clean removal spell that clears blockers for attack-focused turns."
+    },
+    {
+      "name": "O Happy Dagger",
+      "author": "Shakespeare",
+      "type": "artifact",
+      "tags": ["pressure"],
+      "support_family": null,
+      "notes": "Cheap reach tool for closing reputation races."
+    },
+    {
+      "name": "Yorick's Skull",
+      "author": "Shakespeare",
+      "type": "artifact",
+      "tags": ["recursion"],
+      "support_family": null,
+      "notes": "Simple graveyard recovery piece."
+    },
+    {
+      "name": "Rabbit's Pocket Watch",
+      "author": "Lewis Carroll",
+      "type": "artifact",
+      "tags": ["tempo"],
+      "support_family": null,
+      "notes": "Straight draw burst for fast Carroll turns."
+    },
+    {
+      "name": "Revision",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["sustain"],
+      "support_family": "writing_support",
+      "notes": "Pure life buffer."
+    },
+    {
+      "name": "Deadline Surge",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["tempo"],
+      "support_family": "writing_support",
+      "notes": "Resource spike that helps jump into bigger plays."
+    },
+    {
+      "name": "Hyperbole",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["buff"],
+      "support_family": null,
+      "notes": "Low-friction offensive stat boost."
+    },
+    {
+      "name": "Internal Conflict",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["control"],
+      "support_family": null,
+      "notes": "Removal spell that answers the opponent's biggest attacker."
+    },
+    {
+      "name": "Exposition",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["tempo", "knowledge"],
+      "support_family": null,
+      "notes": "Cantrip support and current baseline knowledge enabler."
+    },
+    {
+      "name": "Suspense",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["reveal"],
+      "support_family": null,
+      "notes": "Cheap scouting card that provides partial hand information."
+    },
+    {
+      "name": "Foreshadowing",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["reveal"],
+      "support_family": null,
+      "notes": "Full-hand scout for planning turns."
+    },
+    {
+      "name": "Protagonist",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["buff", "sustain"],
+      "support_family": null,
+      "notes": "Moderate buff that also protects a key unit."
+    },
+    {
+      "name": "A Pound of Flesh",
+      "author": "Shakespeare",
+      "type": "plot",
+      "tags": ["debuff", "pressure"],
+      "support_family": null,
+      "notes": "Combat setup tool through defense reduction."
+    },
+    {
+      "name": "Eat Me / Drink Me",
+      "author": "Lewis Carroll",
+      "type": "artifact",
+      "tags": ["buff", "debuff"],
+      "support_family": null,
+      "notes": "Modal stat swing card."
+    },
+    {
+      "name": "Tea Party Chaos",
+      "author": "Lewis Carroll",
+      "type": "plot",
+      "tags": ["debuff", "pressure"],
+      "support_family": null,
+      "notes": "Board-wide attack shrink that helps pressure decks push through."
+    },
+    {
+      "name": "Critical Essay",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["tempo", "knowledge"],
+      "support_family": "classroom_support",
+      "notes": "Light card-flow support with knowledge flavor."
+    },
+    {
+      "name": "Looking-Glass Return",
+      "author": "Lewis Carroll",
+      "type": "plot",
+      "tags": ["recursion", "tempo"],
+      "support_family": null,
+      "notes": "Low-cost recursion bridge for small Carroll or neutral value bodies."
+    },
+    {
+      "name": "Ophelia",
+      "author": "Shakespeare",
+      "type": "character",
+      "tags": ["defeat_trigger", "knowledge"],
+      "support_family": null,
+      "notes": "Defeat-trigger payoff body that turns tragedy into cards and knowledge."
+    },
+    {
+      "name": "Crowd Murmur",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["debuff", "control"],
+      "support_family": null,
+      "notes": "Two-target debuff support that gives the lane real density."
+    },
+    {
+      "name": "Margin Notes",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["knowledge", "control"],
+      "support_family": "classroom_support",
+      "notes": "Knowledge payoff that turns literary progress into damage."
+    },
+    {
+      "name": "Read the Room",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["reveal", "tempo"],
+      "support_family": null,
+      "notes": "Reveal payoff that upgrades scouting into card flow and inspiration."
+    },
+    {
+      "name": "Rough Draft",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["tempo", "reveal"],
+      "support_family": "writing_support",
+      "notes": "Deck filter that smooths fast hands without a new subsystem."
+    },
+    {
+      "name": "Stay of Execution",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["sustain", "buff"],
+      "support_family": null,
+      "notes": "Simple memorability restore for slower shells."
+    },
+    {
+      "name": "Dramatic Irony",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["reveal", "recursion"],
+      "support_family": null,
+      "notes": "Cross-author bridge that links reveal lines to defeat-value recursion."
+    },
+    {
+      "name": "Close Reading",
+      "author": "Neutral",
+      "type": "plot",
+      "tags": ["knowledge", "tempo"],
+      "support_family": "classroom_support",
+      "notes": "Threshold payoff plot that converts built-up knowledge into immediate card flow without needing a generic neutral character."
+    }
+  ],
+  "authors": [
+    {
+      "name": "Shakespeare",
+      "identity": ["pressure", "defeat_trigger", "reveal", "knowledge"],
+      "notes": "Now mixes tragic aggression with more deliberate information play thanks to Hamlet, Ophelia, and existing defeat-value pieces."
+    },
+    {
+      "name": "Lewis Carroll",
+      "identity": ["tempo", "pressure", "recursion", "reveal"],
+      "notes": "Fast draw, reveal payoffs, odd-angle pressure, and sticky value now feel much more like a real Carroll shell."
+    },
+    {
+      "name": "Neutral",
+      "identity": ["reveal", "knowledge", "bridge_support", "sustain", "debuff"],
+      "notes": "Carries the glue that lets cross-author shells form without becoming a faction of its own."
+    }
+  ],
+  "archetypes": [
+    {
+      "name": "Carroll Tempo Reveal",
+      "authors": ["Lewis Carroll", "Neutral"],
+      "core_tags": ["tempo", "reveal", "pressure"],
+      "notes": "White Rabbit, Rabbit's Pocket Watch, Rough Draft, Read the Room, Alice, and Queen of Hearts now form a clearer fast-information shell."
+    },
+    {
+      "name": "Shakespeare Pressure Defeat",
+      "authors": ["Shakespeare", "Neutral"],
+      "core_tags": ["pressure", "defeat_trigger", "control"],
+      "notes": "Hamlet, Juliet, Lady Macbeth, Prospero, Ophelia, and Dramatic Irony make Shakespeare's pressure-value shell feel more intentional."
+    },
+    {
+      "name": "Knowledge Control Midrange",
+      "authors": ["Neutral", "Shakespeare", "Lewis Carroll"],
+      "core_tags": ["knowledge", "reveal", "control", "sustain"],
+      "notes": "Hamlet, Exposition, Soliloquy, Margin Notes, Close Reading, Critical Essay, and Stay of Execution now give the knowledge lane setup, payoff, and board presence."
+    },
+    {
+      "name": "Sticky Recursion Value",
+      "authors": ["Lewis Carroll", "Shakespeare", "Neutral"],
+      "core_tags": ["recursion", "defeat_trigger", "tempo"],
+      "notes": "Cheshire Cat, Yorick's Skull, Looking-Glass Return, and Dramatic Irony create a more reliable replay loop."
+    },
+    {
+      "name": "Debuff Control",
+      "authors": ["Neutral", "Lewis Carroll", "Shakespeare"],
+      "core_tags": ["debuff", "control", "pressure"],
+      "notes": "Crowd Murmur, Tea Party Chaos, A Pound of Flesh, and targeted removal now give debuff a real support package."
+    }
+  ],
+  "code_dependencies": [
+    {
+      "area": "active author rules",
+      "locations": ["app.js:21", "app.js:408", "app.js:1608", "app.js:1974"],
+      "details": "Gameplay still only treats Shakespeare and Lewis Carroll as active authors."
+    },
+    {
+      "area": "player-facing author text",
+      "locations": ["app.js:2747"],
+      "details": "Card UI shows the author field directly, so support labels still must stay out of author."
+    },
+    {
+      "area": "reveal payoff tracking",
+      "locations": ["app.js:818", "app.js:2230", "app.js:2412", "app.js:1842"],
+      "details": "Bridge Set 0 adds a small per-turn revealedEnemyCards flag so reveal payoff cards can remain readable."
+    },
+    {
+      "area": "knowledge-check labeling",
+      "locations": ["app.js:2039"],
+      "details": "Literary-device quiz presentation still uses subtype and quiz metadata, not author."
+    }
+  ],
+  "remaining_gaps": [
+    {
+      "type": "pre_defeat_protection_gap",
+      "details": "Sustain is healthier now, but most protection still happens after damage rather than before a key unit would be defeated."
+    },
+    {
+      "type": "knowledge_tuning_gap",
+      "details": "Knowledge now has a clearer threshold payoff, but testing still needs to confirm whether the package wants one more payoff or simply better tuning."
+    },
+    {
+      "type": "remaining_flat_bodies",
+      "details": "Macbeth, Jabberwock, and a few support-neutral cards are still simpler than the new anchor shell, though they are less urgent than the four cards addressed here."
+    }
+  ],
+  "ambiguities": [
+    {
+      "card": "Close Reading",
+      "issue": "Future testing should confirm whether the 3+ Knowledge draw payoff is readable and worth the slot without becoming a generic auto-include."
+    },
+    {
+      "card": "Queen of Hearts",
+      "issue": "Watch whether reveal-enabled direct writer damage feels exciting or too easy to spike when combined with cheap scouting."
+    },
+    {
+      "card": "Lady Macbeth",
+      "issue": "Watch whether her immediate debuff is the right manipulation expression, or whether Shakespeare eventually wants a more ally-focused ambition payoff."
+    }
+  ],
+  "next_content_targets": [
+    {
+      "tag": "protection",
+      "need": "If testing still shows fragile control shells collapsing too fast, add one simple pre-defeat protection card rather than a larger sustain package."
+    },
+    {
+      "tag": "knowledge",
+      "need": "Tune whether the lane wants one more payoff card or just a numbers pass on Close Reading and Margin Notes."
+    },
+    {
+      "tag": "author_identity",
+      "need": "Consider whether Macbeth or Jabberwock should be the next named anchors to receive a sharper identity pass."
+    },
+    {
+      "tag": "mixed_shells",
+      "need": "Test whether the new neutral bridges are enough, then add at most one more cross-author connector instead of broadening into a bigger set."
+    }
+  ]
+}
