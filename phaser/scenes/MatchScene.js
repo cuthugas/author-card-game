@@ -228,15 +228,22 @@ export class MatchScene extends Phaser.Scene {
     const deckHeight = isPhone ? 86 : 112;
 
     // Temporary Wonderland board isolation pass:
-    // remove legacy guide art as well as shell remnants so the authored board
-    // can be viewed with minimal overlay interference.
-
-    this.enemyLaneGlow = null;
-    this.playerLaneGlow = null;
+    // keep desktop largely clean, but restore the lightest possible phone-only
+    // guides so mobile board placement and readability remain usable.
+    this.enemyLaneGlow = isPhone
+      ? this.add.image(w * 0.5, enemyLaneY, "lane-pulse").setDisplaySize(playWidth * 0.96, h * 0.14).setAlpha(0.045)
+      : null;
+    this.playerLaneGlow = isPhone
+      ? this.add.image(w * 0.5, playerLaneY, "lane-pulse").setDisplaySize(playWidth * 0.96, h * 0.17).setAlpha(0.06)
+      : null;
 
     this.centerSigil = null;
     this.centerSigilGlow = null;
-    this.handFocus = null;
+    // Phone-only hand shelf cue: subtle enough not to fight the Wonderland art,
+    // but present so the compressed hand zone still reads.
+    this.handFocus = isPhone
+      ? this.add.image(w * 0.5, handShelfY - h * 0.005, "lane-pulse").setDisplaySize(playWidth * 0.9, h * 0.16).setAlpha(0.05)
+      : null;
 
     const playEdgeOffset = playWidth * 0.5 + (isPhone ? 0 : 82);
     this.playerDeckPos = { x: w * 0.5 - playEdgeOffset, y: isPhone ? h * 0.72 : h * 0.77 };
@@ -247,6 +254,9 @@ export class MatchScene extends Phaser.Scene {
     this.enemyDeck.setVisible(!isPhone);
 
     this.bgLayer.add([
+      this.enemyLaneGlow,
+      this.playerLaneGlow,
+      this.handFocus,
       this.playerDeck,
       this.enemyDeck,
     ]);
@@ -295,6 +305,16 @@ export class MatchScene extends Phaser.Scene {
 
       this.slotAnchors.ai.push({ x, y: enemyY });
       this.slotAnchors.player.push({ x, y: playerY });
+
+      // Phone-only recovery: restore minimal slot cues after the isolation pass.
+      // Desktop keeps the cleaner board presentation.
+      if (profile.mode === "phone") {
+        const enemySlot = this.add.image(x, enemyY, "slot-anchor").setDisplaySize(profile.slotWidth * 0.92, profile.slotHeight * 0.9).setAlpha(0.12);
+        const playerSlot = this.add.image(x, playerY, "slot-anchor").setDisplaySize(profile.slotWidth * 0.92, profile.slotHeight * 0.9).setAlpha(0.14);
+        this.slotSprites.ai.push(enemySlot);
+        this.slotSprites.player.push(playerSlot);
+        this.slotLayer.add([enemySlot, playerSlot]);
+      }
     }
   }
 

@@ -379,6 +379,17 @@
 
 ### Changes
 
+- Ran a focused mobile-recovery pass for the Wonderland board build without rolling back the broader desktop cleanup.
+- Most likely mobile break:
+  phone lost too many visual anchors at once after shell isolation,
+  especially with deck markers hidden on phone and no slot/lane guidance left.
+- Restored phone-only readability aids in `MatchScene`:
+  very subtle enemy/player lane glows,
+  a light hand-zone focus cue,
+  and faint slot-anchor visuals for both rows.
+- Desktop presentation remains preserved:
+  the restored guides are phone-only,
+  and the larger shell/ornament cleanup remains intentionally removed elsewhere.
 - Continued the temporary Wonderland board isolation pass by removing the remaining visible guide-art overlays from `MatchScene`.
 - Removed remaining legacy guide visuals:
   enemy/player lane glow guides,
