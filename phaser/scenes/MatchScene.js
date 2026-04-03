@@ -80,8 +80,8 @@ export class MatchScene extends Phaser.Scene {
       return {
         mode: "phone",
         cardLayout: "phone",
-        handScale: 0.7,
-        boardScale: 0.52,
+        handScale: 0.66,
+        boardScale: 0.49,
         boardCenterRatio: 0.485,
         enemyLaneRatio: 0.34,
         playerLaneRatio: 0.64,
@@ -92,13 +92,13 @@ export class MatchScene extends Phaser.Scene {
         handAngleStep: 2.8,
         handLiftStep: 1.1,
         handMinSpread: 44,
-        handMaxSpread: 100,
+        handMaxSpread: 94,
         handEdgeScaleBoost: 0.08,
         handCenterScaleBase: 0.88,
         slotInset: Math.max(78, w * 0.13),
         slotBend: 8,
-        slotWidth: 108,
-        slotHeight: 72,
+        slotWidth: 100,
+        slotHeight: 66,
         playWidthRatio: 0.9,
         playWidthMax: w * 0.9,
       };
@@ -107,107 +107,107 @@ export class MatchScene extends Phaser.Scene {
       return {
         mode: "compact",
         cardLayout: "default",
-        handScale: 1.02,
-        boardScale: 0.68,
+        handScale: 0.68,
+        boardScale: 0.46,
         boardCenterRatio: 0.485,
         enemyLaneRatio: 0.335,
         playerLaneRatio: 0.595,
         handShelfRatio: 0.83,
-        handBaseY: this.scale.height - 118,
+        handBaseY: this.scale.height - 88,
         handSidePadding: Math.max(92, w * 0.14),
         handAngle: 12,
         handAngleStep: 3.4,
         handLiftStep: 2.2,
         handMinSpread: 58,
-        handMaxSpread: 128,
+        handMaxSpread: 92,
         handEdgeScaleBoost: 0.1,
         handCenterScaleBase: 0.92,
         slotInset: Math.max(84, w * 0.13),
         slotBend: 14,
-        slotWidth: 124,
-        slotHeight: 82,
-        playWidthRatio: 0.8,
-        playWidthMax: 920,
+        slotWidth: 78,
+        slotHeight: 52,
+        playWidthRatio: 0.6,
+        playWidthMax: 660,
       };
     }
     if (w < 1320) {
       return {
         mode: "medium",
         cardLayout: "default",
-        handScale: 1.08,
-        boardScale: 0.72,
+        handScale: 0.72,
+        boardScale: 0.48,
         boardCenterRatio: 0.49,
         enemyLaneRatio: 0.35,
         playerLaneRatio: 0.605,
         handShelfRatio: 0.82,
-        handBaseY: this.scale.height - 124,
+        handBaseY: this.scale.height - 96,
         handSidePadding: Math.max(132, w * 0.16),
         handAngle: 14,
         handAngleStep: 3.8,
         handLiftStep: 3,
         handMinSpread: 70,
-        handMaxSpread: 144,
+        handMaxSpread: 98,
         handEdgeScaleBoost: 0.12,
         handCenterScaleBase: 0.94,
         slotInset: Math.max(132, w * 0.16),
         slotBend: 14,
-        slotWidth: 132,
-        slotHeight: 88,
-        playWidthRatio: 0.76,
-        playWidthMax: 1040,
+        slotWidth: 82,
+        slotHeight: 56,
+        playWidthRatio: 0.57,
+        playWidthMax: 720,
       };
     }
     if (w < 1680) {
       return {
         mode: "desktop",
         cardLayout: "default",
-        handScale: 1.14,
-        boardScale: 0.74,
+        handScale: 0.76,
+        boardScale: 0.5,
         boardCenterRatio: 0.5,
         enemyLaneRatio: 0.355,
         playerLaneRatio: 0.61,
         handShelfRatio: 0.812,
-        handBaseY: this.scale.height - 132,
+        handBaseY: this.scale.height - 104,
         handSidePadding: Math.max(156, w * 0.17),
         handAngle: 14,
         handAngleStep: 3.6,
         handLiftStep: 3.6,
         handMinSpread: 76,
-        handMaxSpread: 154,
+        handMaxSpread: 104,
         handEdgeScaleBoost: 0.12,
         handCenterScaleBase: 0.95,
         slotInset: Math.max(156, w * 0.17),
         slotBend: 12,
-        slotWidth: 136,
-        slotHeight: 90,
-        playWidthRatio: 0.72,
-        playWidthMax: 1180,
+        slotWidth: 86,
+        slotHeight: 58,
+        playWidthRatio: 0.54,
+        playWidthMax: 780,
       };
     }
     return {
       mode: "wide",
       cardLayout: "default",
-      handScale: 1.2,
-      boardScale: 0.76,
+      handScale: 0.78,
+      boardScale: 0.52,
       boardCenterRatio: 0.505,
       enemyLaneRatio: 0.36,
       playerLaneRatio: 0.615,
       handShelfRatio: 0.805,
-      handBaseY: this.scale.height - 140,
+      handBaseY: this.scale.height - 110,
       handSidePadding: Math.max(190, w * 0.18),
       handAngle: 12,
       handAngleStep: 3.1,
       handLiftStep: 3.4,
       handMinSpread: 88,
-      handMaxSpread: 168,
+      handMaxSpread: 110,
       handEdgeScaleBoost: 0.14,
       handCenterScaleBase: 0.96,
       slotInset: Math.max(180, w * 0.18),
       slotBend: 12,
-      slotWidth: 136,
-      slotHeight: 90,
-      playWidthRatio: 0.68,
-      playWidthMax: 1320,
+      slotWidth: 88,
+      slotHeight: 60,
+      playWidthRatio: 0.52,
+      playWidthMax: 860,
     };
   }
 
@@ -220,13 +220,9 @@ export class MatchScene extends Phaser.Scene {
     const profile = this.getProfile();
     const isPhone = profile.mode === "phone";
     const playWidth = Math.min(w * profile.playWidthRatio, profile.playWidthMax);
-    const boardCenterY = h * profile.boardCenterRatio;
     const enemyLaneY = h * profile.enemyLaneRatio;
     const playerLaneY = h * profile.playerLaneRatio;
     const handShelfY = h * profile.handShelfRatio;
-    const deckWidth = isPhone ? 64 : 84;
-    const deckHeight = isPhone ? 86 : 112;
-
     // Temporary Wonderland board isolation pass:
     // keep desktop largely clean, but restore the lightest possible phone-only
     // guides so mobile board placement and readability remain usable.
@@ -248,18 +244,19 @@ export class MatchScene extends Phaser.Scene {
     const playEdgeOffset = playWidth * 0.5 + (isPhone ? 0 : 82);
     this.playerDeckPos = { x: w * 0.5 - playEdgeOffset, y: isPhone ? h * 0.72 : h * 0.77 };
     this.enemyDeckPos = { x: w * 0.5 + playEdgeOffset, y: isPhone ? h * 0.14 : h * 0.145 };
-    this.playerDeck = this.add.image(this.playerDeckPos.x, this.playerDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAlpha(isPhone ? 0 : 0.9);
-    this.enemyDeck = this.add.image(this.enemyDeckPos.x, this.enemyDeckPos.y, "deck-back").setDisplaySize(deckWidth, deckHeight).setAngle(180).setAlpha(isPhone ? 0 : 0.86);
-    this.playerDeck.setVisible(!isPhone);
-    this.enemyDeck.setVisible(!isPhone);
+    // Keep deck positions for animation origins, but remove the old non-phone
+    // deck marker images because they were the two persistent artifact clusters:
+    // lower-left above the teacup and upper-right below the cards.
+    this.playerDeck = null;
+    this.enemyDeck = null;
 
-    this.bgLayer.add([
-      this.enemyLaneGlow,
-      this.playerLaneGlow,
-      this.handFocus,
-      this.playerDeck,
-      this.enemyDeck,
-    ]);
+    // Temporary Wonderland board isolation pass:
+    // only add real display objects here so non-phone layouts do not feed nulls
+    // into Phaser containers during battlefield rebuilds.
+    const bgChildren = [this.enemyLaneGlow, this.playerLaneGlow, this.handFocus, this.playerDeck, this.enemyDeck].filter(Boolean);
+    if (bgChildren.length) {
+      this.bgLayer.add(bgChildren);
+    }
 
     if (WONDERLAND_BACKGROUND_CONFIG.debugDiagnostics && !this.loggedBackgroundCoverageDebug) {
       console.info("[Wonderland BG][coverage]", {
@@ -677,6 +674,8 @@ export class MatchScene extends Phaser.Scene {
     const isPlayer = this.viewState.currentPlayer === "player";
     const active = isPlayer ? this.playerLaneGlow : this.enemyLaneGlow;
     const passive = isPlayer ? this.enemyLaneGlow : this.playerLaneGlow;
+    const playerSlotSprites = Array.isArray(this.slotSprites?.player) ? this.slotSprites.player.filter(Boolean) : [];
+    const aiSlotSprites = Array.isArray(this.slotSprites?.ai) ? this.slotSprites.ai.filter(Boolean) : [];
 
     if (passive) this.tweens.add({ targets: passive, alpha: 0.03, duration: 180, ease: "Sine.Out" });
     if (active) this.tweens.add({ targets: active, alpha: 0.12, duration: 220, yoyo: true, ease: "Sine.Out" });
@@ -688,22 +687,26 @@ export class MatchScene extends Phaser.Scene {
         ease: "Sine.Out",
       });
     }
-    this.tweens.add({
-      targets: this.slotSprites.player,
-      alpha: isPlayer ? 0.52 : 0.33,
-      scaleX: isPlayer ? 1.06 : 1,
-      scaleY: isPlayer ? 1.06 : 1,
-      duration: 200,
-      ease: "Sine.Out",
-    });
-    this.tweens.add({
-      targets: this.slotSprites.ai,
-      alpha: isPlayer ? 0.3 : 0.5,
-      scaleX: isPlayer ? 1 : 1.06,
-      scaleY: isPlayer ? 1 : 1.06,
-      duration: 200,
-      ease: "Sine.Out",
-    });
+    if (playerSlotSprites.length) {
+      this.tweens.add({
+        targets: playerSlotSprites,
+        alpha: isPlayer ? 0.52 : 0.33,
+        scaleX: isPlayer ? 1.06 : 1,
+        scaleY: isPlayer ? 1.06 : 1,
+        duration: 200,
+        ease: "Sine.Out",
+      });
+    }
+    if (aiSlotSprites.length) {
+      this.tweens.add({
+        targets: aiSlotSprites,
+        alpha: isPlayer ? 0.3 : 0.5,
+        scaleX: isPlayer ? 1 : 1.06,
+        scaleY: isPlayer ? 1 : 1.06,
+        duration: 200,
+        ease: "Sine.Out",
+      });
+    }
   }
 
   handleCardImpact(detail) {

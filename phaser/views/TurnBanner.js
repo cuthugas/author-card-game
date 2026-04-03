@@ -1,12 +1,12 @@
 export class TurnBanner extends Phaser.GameObjects.Container {
   constructor(scene) {
     super(scene, scene.scale.width * 0.5, scene.scale.height * 0.5);
-    this.bg = scene.add.image(0, 0, "panel-base").setDisplaySize(520, 100).setTint(0x2a2118).setAlpha(0.9);
-    this.edge = scene.add.image(0, 0, "panel-edge").setDisplaySize(526, 106).setAlpha(0.9);
+    this.bg = scene.add.image(0, 0, "panel-base").setDisplaySize(452, 88).setTint(0x2a2118).setAlpha(0.86);
+    this.edge = scene.add.image(0, 0, "panel-edge").setDisplaySize(458, 94).setAlpha(0.86);
     this.text = scene.add
       .text(0, 0, "YOUR TURN", {
         fontFamily: "Cinzel",
-        fontSize: "42px",
+        fontSize: "34px",
         color: "#f5e4bd",
         stroke: "#16110d",
         strokeThickness: 6,

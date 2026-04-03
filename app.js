@@ -15,7 +15,7 @@ const FX_EVENT_NAME = "acg:fx";
 const HAND_REVEAL_EVENT_NAME = "acg:hand-reveal";
 const PHONE_LAYOUT_MAX_HEIGHT = 1100;
 const PHONE_ROTATE_SHORT_SIDE = 600;
-const APP_BUILD_ID = "LOCAL-2026-04-03-A";
+const APP_BUILD_ID = "LOCAL-2026-04-03-B";
 window.__ACG_APP_BUILD_ID = APP_BUILD_ID;
 
 const AUTHOR_PROFILES = {
@@ -3361,7 +3361,9 @@ runScreenIntro();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register(`./sw.js?v=${APP_BUILD_ID}`, { updateViaCache: "none" })
+      .catch(() => {});
   });
 }
 

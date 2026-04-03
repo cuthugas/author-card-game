@@ -391,17 +391,26 @@ export class PreloadScene extends Phaser.Scene {
 
     makeCanvasTexture(this, "deck-back", 180, 240, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, "#2d3b5d");
-      g.addColorStop(1, "#171f32");
+      g.addColorStop(0, "#355845");
+      g.addColorStop(0.52, "#23362c");
+      g.addColorStop(1, "#16231d");
       ctx.fillStyle = g;
       roundedRectPath(ctx, 6, 6, w - 12, h - 12, 16);
       ctx.fill();
-      ctx.strokeStyle = "rgba(192,156,89,0.86)";
+      ctx.strokeStyle = "rgba(201,168,104,0.84)";
       ctx.lineWidth = 4;
       ctx.stroke();
-      ctx.strokeStyle = "rgba(33,22,14,0.9)";
+      ctx.strokeStyle = "rgba(28,21,14,0.88)";
       ctx.lineWidth = 2;
       roundedRectPath(ctx, 16, 16, w - 32, h - 32, 10);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(244, 231, 196, 0.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.24, h * 0.5);
+      ctx.lineTo(w * 0.76, h * 0.5);
+      ctx.moveTo(w * 0.5, h * 0.26);
+      ctx.lineTo(w * 0.5, h * 0.74);
       ctx.stroke();
     });
 

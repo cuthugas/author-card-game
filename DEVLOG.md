@@ -361,6 +361,89 @@
 
 ### Changes
 
+- Ran a focused Wonderland cleanup pass to remove leftover placeholder-style background artifacts and reduce match-scene UI footprint.
+- Disabled the optional placeholder motif layer and all corner placeholder layers in the Wonderland background manifest.
+- Root cause of the remaining blue rectangle / decorative line / red rose-like artifacts:
+  generated placeholder layers for `bg_surface_motifs` and `bg_corner_*` were still enabled even though the clean authored board read best without them.
+- Kept the intended clean background layers:
+  `bg_base_field`,
+  `bg_frame_border`,
+  and a lighter `bg_atmosphere`.
+- Reduced MatchScene presentation scale modestly across layouts by trimming:
+  `handScale`,
+  `boardScale`,
+  `slotWidth`,
+  `slotHeight`,
+  and deck marker size.
+- Preserved phone usability by keeping the reduction moderate and leaving the phone-only readability cues intact.
+- Followed up with a stronger non-phone cleanup pass:
+  confirmed `bg_surface_motifs` stays out of active render layers,
+  kept corner layers disabled,
+  reduced non-phone battlefield width/scale further,
+  and made deck markers much subtler so they no longer read as blue placeholder blocks.
+- Ran a focused non-phone UI scale reduction pass in `MatchScene`.
+- Reduced compact/medium/desktop/wide values for:
+  `handScale`,
+  `boardScale`,
+  `slotWidth`,
+  `slotHeight`,
+  `playWidthRatio`,
+  `playWidthMax`,
+  and lowered `handBaseY` slightly so the smaller hand sits less dominantly.
+- Also reduced non-phone deck marker size to keep it aligned with the smaller overall battlefield footprint.
+- Removed the two persistent leftover artifact clusters:
+  one above the lower-left teacup and one below the upper-right cards.
+- Cause:
+  the remaining non-phone `deck-back` marker images were still being rendered in those positions and read like stray decorative board artifacts.
+- Fix:
+  kept the deck positions for card animation origins, but stopped creating/rendering those marker images.
+- Followed with one last stronger non-phone scale reduction so the battlefield, slots, and hand read cleaner and smaller overall.
+
+### Changes
+
+- Fixed a Phaser match-scene crash seen as:
+  `Uncaught TypeError: Cannot read properties of null (reading 'once')`.
+- Root cause:
+  `MatchScene.drawBattlefield()` was still passing phone-only guide objects into `bgLayer.add(...)` on non-phone layouts after those references had been set to `null`.
+- Updated `MatchScene` to filter battlefield background children before adding them to the Phaser container, so desktop/non-phone rebuilds only pass real display objects.
+- Added small defensive guards in lane-pulse tweening so empty or partially missing slot-sprite arrays are skipped safely.
+- Result:
+  desktop/non-phone layout should no longer hit the `null.once` crash,
+  while the phone-only lane glow / slot guidance recovery behavior remains intact.
+
+### Changes
+
+- Investigated inconsistent refresh behavior where normal `F5` could show an older board state while `Ctrl + F5` exposed a newer stripped one.
+- Identified the main cause as a service-worker-driven cache/version mismatch, not just a simple rendering bug:
+  same-origin app/module files were being cached and served too aggressively, which allowed stale Phaser code/assets to survive across normal refreshes.
+- Bumped the service worker cache version and changed app-shell/code fetch behavior so same-origin HTML/CSS/JS/web manifest files now go network-first with cache fallback.
+- Added explicit version query strings to local shell entry points in `index.html`:
+  `styles.css`,
+  `app.js`,
+  `manifest.webmanifest`,
+  and `phaser/game.js`.
+- Updated service worker registration to use a versioned `sw.js` URL plus `updateViaCache: "none"` so browser cache is less likely to reuse an old worker script.
+- Updated the fallback Phaser UI build marker so it matches the current build family.
+
+### Cache Diagnosis
+
+- Most likely root issue:
+  stale service worker cache mixed with newer shell requests.
+- This explains the observed split behavior:
+  normal `F5` could stay on older cached app/module code,
+  while `Ctrl + F5` was more likely to bypass part of that cache and reveal the latest, partially mismatched shell/code set.
+- This did not primarily look like a missing-Wonderland-asset problem.
+- It also did not primarily look like a fundamentally broken latest gameplay build;
+  the bigger issue was inconsistent asset/code version alignment at load time.
+
+### Manual Follow-Up
+
+- After loading the updated build, do one hard refresh first.
+- If the older state still appears, clear site data or unregister the existing service worker once, then reload.
+- After that, normal refreshes should stay on the same current build much more reliably.
+
+### Changes
+
 - Added a reusable Phaser `BackgroundLayerManager` for layered authored board backgrounds.
 - Added a Wonderland background manifest with the requested layer keys:
   `bg_base_field`, `bg_surface_motifs`, `bg_frame_border`, four corner props, and `bg_atmosphere`.
@@ -379,6 +462,17 @@
 
 ### Changes
 
+- Ran a focused Wonderland UI cleanup/scale pass.
+- Removed the temporary upper-left Wonderland rendered debug label by disabling background diagnostics for normal play.
+- Scaled the visible HUD down in a controlled way:
+  smaller player/enemy panel docks and panel scales,
+  smaller action/info/utility docks,
+  slightly smaller draw/end-turn/fullscreen buttons,
+  and a smaller turn banner and top info text.
+- The blue rectangles were the generated `deck-back` markers in `MatchScene`, using the placeholder `deck-back` texture from `PreloadScene`.
+- They were not removed entirely because they still serve as functional deck markers on larger layouts, but they were restyled away from bright blue into a subdued emerald/antique-gold treatment and scaled down to fit the Wonderland board better.
+- Mobile-specific consideration:
+  reductions were kept modest on phone so touch usability and readability stay intact.
 - Ran a focused mobile-recovery pass for the Wonderland board build without rolling back the broader desktop cleanup.
 - Most likely mobile break:
   phone lost too many visual anchors at once after shell isolation,

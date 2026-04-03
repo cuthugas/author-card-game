@@ -17,24 +17,24 @@ export const WONDERLAND_BACKGROUND_ASSETS = [
 
 export const WONDERLAND_BACKGROUND_CONFIG = {
   themeKey: "wonderland",
-  // Temporary visual diagnostics: toggle on while verifying external PNG usage.
-  debugDiagnostics: true,
+  // Diagnostics were used during background integration; keep off for normal play.
+  debugDiagnostics: false,
   // Keep the central play field visually quieter so gameplay remains readable.
   // This is currently a tuning contract for authored boards rather than an explicit mask:
   // decorative layers should avoid placing busy detail in this zone.
   centerSafeZone: { widthRatio: 0.56, heightRatio: 0.42 },
+  // Intentionally omitted from active render layers for now:
+  // `bg_surface_motifs` and all `bg_corner_*` placeholder art.
+  // They remain loadable textures, but are not added to the scene.
   fullscreenLayers: [
     { key: "bg_base_field", alpha: 1, scaleMultiplier: 1, decorativeOnly: false },
-    { key: "bg_surface_motifs", alpha: 0.18, scaleMultiplier: 1.01, decorativeOnly: true },
     { key: "bg_frame_border", alpha: 0.92, scaleMultiplier: 1, decorativeOnly: false },
-    { key: "bg_atmosphere", alpha: 0.22, scaleMultiplier: 1.03, decorativeOnly: true, drift: { x: 6, y: 5, duration: 22000 } },
+    { key: "bg_atmosphere", alpha: 0.08, scaleMultiplier: 1.02, decorativeOnly: true, drift: { x: 4, y: 3, duration: 24000 } },
   ],
-  cornerLayers: [
-    { key: "bg_corner_tl", anchor: "tl", alpha: 0.9, scaleMultiplier: 1, decorativeOnly: true, drift: { x: 2.5, y: 2, duration: 20000 } },
-    { key: "bg_corner_tr", anchor: "tr", alpha: 0.9, scaleMultiplier: 1, decorativeOnly: true, drift: { x: -2.5, y: 2, duration: 21000 } },
-    { key: "bg_corner_bl", anchor: "bl", alpha: 0.94, scaleMultiplier: 1, decorativeOnly: true, drift: { x: 3, y: -2.5, duration: 19000 } },
-    { key: "bg_corner_br", anchor: "br", alpha: 0.94, scaleMultiplier: 1, decorativeOnly: true, drift: { x: -3, y: -2.5, duration: 20500 } },
-  ],
+  // Placeholder motif and corner layers stay disabled for now because their
+  // generated rectangle/rose flourishes read as leftover artifacts rather than
+  // authored board art.
+  cornerLayers: [],
   // Per-device tuning lives here. Future themes should prefer manifest-level tuning
   // instead of scene-level special cases so authored boards stay modular.
   deviceTuning: {
