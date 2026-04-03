@@ -398,6 +398,9 @@
 - Fix:
   kept the deck positions for card animation origins, but stopped creating/rendering those marker images.
 - Followed with one last stronger non-phone scale reduction so the battlefield, slots, and hand read cleaner and smaller overall.
+- Ran a focused hand readability polish pass.
+- Raised the non-phone hand higher off the bottom frame ornament, increased fan spread so cards overlap less, and relaxed side padding so titles/costs are easier to read at a glance.
+- Increased hover emphasis so the active hand card lifts and scales more clearly above neighboring cards.
 
 ### Changes
 

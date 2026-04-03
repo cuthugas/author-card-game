@@ -604,11 +604,14 @@ export class CardView extends Phaser.GameObjects.Container {
     if (this.opts.disableHover || this.settling) return;
     if (this.inspectRaised) return;
     this.clearHoverTweens();
+    if (isHover && this.parentContainer?.bringToTop) {
+      this.parentContainer.bringToTop(this);
+    }
     this.hoverTween = this.scene.tweens.add({
       targets: this,
-      y: isHover ? this.baseY - 16 : this.baseY,
-      scaleX: isHover ? this.baseScale * 1.07 : this.baseScale,
-      scaleY: isHover ? this.baseScale * 1.07 : this.baseScale,
+      y: isHover ? this.baseY - 24 : this.baseY,
+      scaleX: isHover ? this.baseScale * 1.1 : this.baseScale,
+      scaleY: isHover ? this.baseScale * 1.1 : this.baseScale,
       duration: 135,
       ease: "Quad.Out",
       onComplete: () => {
