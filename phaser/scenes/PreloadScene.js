@@ -1,4 +1,7 @@
 import { ASSET_MANIFEST } from "../assets/manifest.js";
+import { WONDERLAND_BACKGROUND_ASSETS } from "../assets/backgroundManifest.js";
+
+const WONDERLAND_DEBUG_KEYS = new Set(["bg_base_field", "bg_frame_border"]);
 
 function makeCanvasTexture(scene, key, width, height, painter) {
   const tex = scene.textures.createCanvas(key, width, height);
@@ -28,6 +31,130 @@ function roundedRectPath(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function ensureWonderlandBackgroundPlaceholders(scene) {
+  const ensureTexture = (key, width, height, painter) => {
+    if (scene.textures.exists(key)) return;
+    makeCanvasTexture(scene, key, width, height, painter);
+    scene.registry.set(`wonderlandTextureOrigin:${key}`, "placeholder");
+    console.info("[Wonderland BG][placeholder]", { key, width, height, origin: "placeholder" });
+  };
+
+  ensureTexture("bg_base_field", 1600, 900, (ctx, w, h) => {
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#17314f");
+    sky.addColorStop(0.45, "#1d2740");
+    sky.addColorStop(1, "#132035");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+
+    const glow = ctx.createRadialGradient(w * 0.5, h * 0.46, 20, w * 0.5, h * 0.46, w * 0.45);
+    glow.addColorStop(0, "rgba(150, 204, 255, 0.16)");
+    glow.addColorStop(1, "rgba(150, 204, 255, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    const field = ctx.createLinearGradient(0, h * 0.56, 0, h);
+    field.addColorStop(0, "#2f5136");
+    field.addColorStop(1, "#1e3727");
+    ctx.fillStyle = field;
+    ctx.fillRect(0, h * 0.56, w, h * 0.44);
+  });
+
+  ensureTexture("bg_surface_motifs", 1600, 900, (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(244, 226, 183, 0.08)";
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 8; i += 1) {
+      const x = 110 + i * 185;
+      ctx.strokeRect(x, h * 0.12, 84, 118);
+    }
+    for (let i = 0; i < 6; i += 1) {
+      const x = 140 + i * 230;
+      const y = h * 0.7 + ((i % 2) * 18);
+      ctx.beginPath();
+      ctx.arc(x, y, 30, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + 36, y - 10, 12, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  });
+
+  ensureTexture("bg_frame_border", 1600, 900, (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(226, 194, 136, 0.92)";
+    ctx.lineWidth = 18;
+    ctx.strokeRect(14, 14, w - 28, h - 28);
+    ctx.strokeStyle = "rgba(84, 55, 31, 0.95)";
+    ctx.lineWidth = 7;
+    ctx.strokeRect(34, 34, w - 68, h - 68);
+    ctx.strokeStyle = "rgba(255, 238, 205, 0.18)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(48, 48, w - 96, h - 96);
+  });
+
+  const paintCorner = (flipX = false, flipY = false) => (ctx, w, h) => {
+    ctx.save();
+    ctx.translate(flipX ? w : 0, flipY ? h : 0);
+    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(119, 37, 58, 0.96)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(w * 0.05, h * 0.03, w * 0.18, h * 0.06, w * 0.34, h * 0.08);
+    ctx.bezierCurveTo(w * 0.2, h * 0.19, w * 0.1, h * 0.3, 0, h * 0.44);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(219, 196, 145, 0.58)";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(36, 18);
+    ctx.bezierCurveTo(80, 52, 122, 96, 158, 146);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(108, 30);
+    ctx.bezierCurveTo(128, 58, 150, 88, 178, 116);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(183, 32, 66, 0.92)";
+    for (let i = 0; i < 3; i += 1) {
+      const x = 62 + i * 44;
+      const y = 28 + i * 26;
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(248, 228, 195, 0.22)";
+      ctx.beginPath();
+      ctx.arc(x - 4, y - 4, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(183, 32, 66, 0.92)";
+    }
+    ctx.restore();
+  };
+
+  ensureTexture("bg_corner_tl", 240, 240, paintCorner(false, false));
+  ensureTexture("bg_corner_tr", 240, 240, paintCorner(true, false));
+  ensureTexture("bg_corner_bl", 240, 240, paintCorner(false, true));
+  ensureTexture("bg_corner_br", 240, 240, paintCorner(true, true));
+
+  ensureTexture("bg_atmosphere", 1600, 900, (ctx, w, h) => {
+    ctx.clearRect(0, 0, w, h);
+    const haze = ctx.createRadialGradient(w * 0.5, h * 0.44, 30, w * 0.5, h * 0.44, w * 0.48);
+    haze.addColorStop(0, "rgba(181, 220, 255, 0.22)");
+    haze.addColorStop(0.45, "rgba(181, 220, 255, 0.1)");
+    haze.addColorStop(1, "rgba(181, 220, 255, 0)");
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, 0, w, h);
+
+    const lowerMist = ctx.createLinearGradient(0, h * 0.54, 0, h);
+    lowerMist.addColorStop(0, "rgba(214, 239, 255, 0)");
+    lowerMist.addColorStop(1, "rgba(214, 239, 255, 0.2)");
+    ctx.fillStyle = lowerMist;
+    ctx.fillRect(0, h * 0.54, w, h * 0.46);
+  });
+}
+
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super("preload");
@@ -35,7 +162,15 @@ export class PreloadScene extends Phaser.Scene {
 
   preload() {
     // Texture keys reserved for external assets when available.
-    ASSET_MANIFEST.images.forEach(() => {});
+    ASSET_MANIFEST.images.forEach((asset) => {
+      if (asset.path) this.load.image(asset.key, asset.path);
+    });
+    WONDERLAND_BACKGROUND_ASSETS.forEach((asset) => {
+      if (asset.externalPath) {
+        this.registry.set(`wonderlandTexturePath:${asset.key}`, asset.externalPath);
+        this.load.image(asset.key, asset.externalPath);
+      }
+    });
 
     makeCanvasTexture(this, "panel-base", 512, 160, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
@@ -335,6 +470,28 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create() {
+    WONDERLAND_BACKGROUND_ASSETS.forEach((asset) => {
+      if (!WONDERLAND_DEBUG_KEYS.has(asset.key)) return;
+      const existsBeforeFallback = this.textures.exists(asset.key);
+      const texture = existsBeforeFallback ? this.textures.get(asset.key) : null;
+      const source = texture?.getSourceImage?.();
+      const width = source?.width || texture?.source?.[0]?.width || null;
+      const height = source?.height || texture?.source?.[0]?.height || null;
+      const origin = existsBeforeFallback && asset.externalPath ? "external" : "missing";
+      if (existsBeforeFallback && asset.externalPath) {
+        this.registry.set(`wonderlandTextureOrigin:${asset.key}`, "external");
+      }
+      console.info("[Wonderland BG][pre-fallback]", {
+        key: asset.key,
+        exists: existsBeforeFallback,
+        width,
+        height,
+        origin,
+        path: asset.externalPath || null,
+      });
+    });
+
+    ensureWonderlandBackgroundPlaceholders(this);
     this.scene.start("match");
     this.scene.start("fx");
     this.scene.start("ui");

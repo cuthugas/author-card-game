@@ -1,4 +1,6 @@
 import { StateAdapter } from "../core/stateAdapter.js";
+import { BackgroundLayerManager } from "../core/BackgroundLayerManager.js";
+import { WONDERLAND_BACKGROUND_CONFIG } from "../assets/backgroundManifest.js";
 import { CardView } from "../views/CardView.js";
 import { HandFan } from "../views/HandFan.js";
 import { CardDetailOverlay } from "../views/CardDetailOverlay.js";
@@ -17,10 +19,12 @@ export class MatchScene extends Phaser.Scene {
     this.lastKnownPos = new Map();
 
     this.cardImpactHandler = (e) => this.handleCardImpact(e.detail || {});
+    this.loggedBackgroundCoverageDebug = false;
   }
 
   create() {
     this.root = this.add.container(0, 0);
+    this.backgroundArtLayer = this.add.container(0, 0);
     this.bgLayer = this.add.container(0, 0);
     this.slotLayer = this.add.container(0, 0);
     this.boardLayer = this.add.container(0, 0);
@@ -28,7 +32,10 @@ export class MatchScene extends Phaser.Scene {
     this.inspectLayer = this.add.container(0, 0);
     this.fxLayer = this.add.container(0, 0);
 
-    this.root.add([this.bgLayer, this.slotLayer, this.boardLayer, this.handLayer, this.inspectLayer, this.fxLayer]);
+    this.root.add([this.backgroundArtLayer, this.bgLayer, this.slotLayer, this.boardLayer, this.handLayer, this.inspectLayer, this.fxLayer]);
+
+    this.backgroundLayerManager = new BackgroundLayerManager(this, this.backgroundArtLayer, WONDERLAND_BACKGROUND_CONFIG);
+    this.backgroundLayerManager.create();
 
     this.handFan = new HandFan(this, this.handLayer);
     this.cardDetailOverlay = new CardDetailOverlay(this);
@@ -54,6 +61,7 @@ export class MatchScene extends Phaser.Scene {
     window.addEventListener("acg:fx", this.cardImpactHandler);
 
     this.scale.on("resize", () => {
+      this.backgroundLayerManager.layout(this.scale.width, this.scale.height);
       this.drawBattlefield();
       this.cardDetailOverlay.layout(this.scale.width, this.scale.height);
       this.renderState();
@@ -62,6 +70,7 @@ export class MatchScene extends Phaser.Scene {
 
   shutdown() {
     window.removeEventListener("acg:fx", this.cardImpactHandler);
+    this.backgroundLayerManager?.destroy();
   }
 
   getProfile() {
@@ -218,45 +227,16 @@ export class MatchScene extends Phaser.Scene {
     const deckWidth = isPhone ? 64 : 84;
     const deckHeight = isPhone ? 86 : 112;
 
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x0a0f11, 0x121a1d, 0x202521, 0x090b0d, 1);
-    bg.fillRect(0, 0, w, h);
+    // Temporary Wonderland board isolation pass:
+    // remove legacy guide art as well as shell remnants so the authored board
+    // can be viewed with minimal overlay interference.
 
-    const farForest = this.add.graphics();
-    farForest.fillStyle(0x101814, 0.58);
-    for (let i = 0; i < 9; i += 1) {
-      const x = (w / 8) * i;
-      farForest.fillTriangle(x - 80, h * 0.44, x + 28, h * 0.18, x + 132, h * 0.44);
-    }
+    this.enemyLaneGlow = null;
+    this.playerLaneGlow = null;
 
-    const boardTableWidth = Math.min(w * (isPhone ? 0.9 : 0.88), playWidth + (isPhone ? 120 : 220));
-    const boardTable = this.add.image(w * 0.5, boardCenterY, "panel-base").setDisplaySize(boardTableWidth, h * (isPhone ? 0.5 : 0.54)).setTint(0x60452d, 0x3d2b1d, 0x271c13, 0x513825);
-    const boardEdge = this.add.image(w * 0.5, boardCenterY, "panel-edge").setDisplaySize(boardTableWidth + (isPhone ? 8 : 10), h * (isPhone ? 0.51 : 0.548)).setAlpha(0.76);
-    const boardFrameInner = this.add.image(w * 0.5, boardCenterY, "panel-edge").setDisplaySize(playWidth + (isPhone ? 36 : 78), h * (isPhone ? 0.42 : 0.46)).setAlpha(0.28);
-
-    this.enemyLaneGlow = this.add.image(w * 0.5, enemyLaneY, "lane-pulse").setDisplaySize(playWidth * 0.98, h * (isPhone ? 0.15 : 0.2)).setAlpha(0.1);
-    this.playerLaneGlow = this.add.image(w * 0.5, playerLaneY, "lane-pulse").setDisplaySize(playWidth * 0.98, h * (isPhone ? 0.18 : 0.21)).setAlpha(0.14);
-
-    const enemyInlay = this.add.image(w * 0.5, enemyLaneY, "panel-edge").setDisplaySize(playWidth, h * (isPhone ? 0.1 : 0.13)).setAlpha(0.22);
-    const playerInlay = this.add.image(w * 0.5, playerLaneY, "panel-edge").setDisplaySize(playWidth, h * (isPhone ? 0.12 : 0.145)).setAlpha(0.24);
-    const enemyLaneBar = this.add.rectangle(w * 0.5, enemyLaneY, playWidth * 0.96, h * (isPhone ? 0.07 : 0.095), 0x13181b, 0.34);
-    const playerLaneBar = this.add.rectangle(w * 0.5, playerLaneY, playWidth * 0.96, h * (isPhone ? 0.085 : 0.104), 0x111519, 0.36);
-
-    this.centerSigil = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "center-sigil").setDisplaySize(playWidth * 0.66, h * 0.22).setAlpha(0.74);
-    this.centerSigilGlow = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "lane-pulse").setDisplaySize(playWidth * 0.48, h * 0.12).setAlpha(0.12);
-    const centerSpine = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "hud-link").setDisplaySize(playWidth * 0.56, h * 0.06).setAlpha(0.52);
-    const centerSpineV = this.add.image(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), "hud-link").setDisplaySize(h * 0.14, h * 0.06).setAngle(90).setAlpha(0.4);
-
-    const divider = this.add.rectangle(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), playWidth * 0.8, 2, 0xdab06e, 0.34);
-    const dividerGlow = this.add.rectangle(w * 0.5, boardCenterY - (isPhone ? h * 0.01 : h * 0.02), playWidth * 0.84, 18, 0xd59e54, 0.09);
-
-    const foregroundFog = this.add.tileSprite(w * 0.5, h * 0.78, w * 1.1, h * 0.32, "particle-fog").setAlpha(0.14);
-    this.tweens.add({ targets: foregroundFog, tilePositionX: 80, duration: 26000, repeat: -1 });
-
-    const upperFocus = this.add.image(w * 0.5, boardCenterY - h * 0.02, "lane-pulse").setDisplaySize(w * 0.52, h * (isPhone ? 0.24 : 0.34)).setAlpha(0.2);
-    this.handFocus = this.add.image(w * 0.5, handShelfY - h * 0.005, "lane-pulse").setDisplaySize(playWidth * 0.92, h * (isPhone ? 0.18 : 0.22)).setAlpha(0.36);
-    const handShelf = this.add.image(w * 0.5, handShelfY, "panel-edge").setDisplaySize(playWidth * 0.88, h * (isPhone ? 0.08 : 0.11)).setAlpha(0.24);
-    const vignette = this.add.image(w * 0.5, h * 0.5, "vignette").setDisplaySize(w, h).setAlpha(0.7);
+    this.centerSigil = null;
+    this.centerSigilGlow = null;
+    this.handFocus = null;
 
     const playEdgeOffset = playWidth * 0.5 + (isPhone ? 0 : 82);
     this.playerDeckPos = { x: w * 0.5 - playEdgeOffset, y: isPhone ? h * 0.72 : h * 0.77 };
@@ -267,31 +247,30 @@ export class MatchScene extends Phaser.Scene {
     this.enemyDeck.setVisible(!isPhone);
 
     this.bgLayer.add([
-      bg,
-      farForest,
-      boardTable,
-      boardEdge,
-      this.enemyLaneGlow,
-      this.playerLaneGlow,
-      boardFrameInner,
-      enemyLaneBar,
-      playerLaneBar,
-      enemyInlay,
-      playerInlay,
-      this.centerSigil,
-      this.centerSigilGlow,
-      centerSpine,
-      centerSpineV,
-      dividerGlow,
-      divider,
-      foregroundFog,
-      upperFocus,
-      this.handFocus,
-      handShelf,
       this.playerDeck,
       this.enemyDeck,
-      vignette,
     ]);
+
+    if (WONDERLAND_BACKGROUND_CONFIG.debugDiagnostics && !this.loggedBackgroundCoverageDebug) {
+      console.info("[Wonderland BG][coverage]", {
+        backgroundArtLayer: [
+          "bg_base_field",
+          "bg_surface_motifs",
+          "bg_frame_border",
+          "bg_atmosphere",
+          "bg_corner_*",
+        ],
+        bgLayerFullscreenOrLargeCovers: [
+          { key: "bg graphics gradient", coverage: "fullscreen", alpha: 1 },
+          { key: "farForest graphics", coverage: "upper/center wide", alpha: 0.58 },
+          { key: "panel-base boardTable", coverage: "large center board shell", alpha: 1 },
+          { key: "panel-edge boardEdge", coverage: "large center shell edge", alpha: 0.76 },
+          { key: "vignette", coverage: "fullscreen", alpha: 0.7 },
+        ],
+        likelyResult: "Wonderland base/frame are rendered underneath, but much of their visual read is being covered by opaque or high-alpha match shell layers in bgLayer.",
+      });
+      this.loggedBackgroundCoverageDebug = true;
+    }
 
     this.buildSlotAnchors();
   }
@@ -316,12 +295,6 @@ export class MatchScene extends Phaser.Scene {
 
       this.slotAnchors.ai.push({ x, y: enemyY });
       this.slotAnchors.player.push({ x, y: playerY });
-
-      const enemySlot = this.add.image(x, enemyY, "slot-anchor").setDisplaySize(profile.slotWidth, profile.slotHeight).setAlpha(0.32);
-      const playerSlot = this.add.image(x, playerY, "slot-anchor").setDisplaySize(profile.slotWidth, profile.slotHeight).setAlpha(0.38);
-      this.slotSprites.ai.push(enemySlot);
-      this.slotSprites.player.push(playerSlot);
-      this.slotLayer.add([enemySlot, playerSlot]);
     }
   }
 
@@ -685,21 +658,16 @@ export class MatchScene extends Phaser.Scene {
     const active = isPlayer ? this.playerLaneGlow : this.enemyLaneGlow;
     const passive = isPlayer ? this.enemyLaneGlow : this.playerLaneGlow;
 
-    this.tweens.add({ targets: passive, alpha: 0.08, duration: 180, ease: "Sine.Out" });
-    this.tweens.add({ targets: active, alpha: 0.34, duration: 220, yoyo: true, ease: "Sine.Out" });
-    this.tweens.add({
-      targets: this.centerSigilGlow,
-      alpha: isPlayer ? 0.2 : 0.15,
-      duration: 200,
-      yoyo: true,
-      ease: "Sine.Out",
-    });
-    this.tweens.add({
-      targets: this.handFocus,
-      alpha: isPlayer ? 0.34 : 0.18,
-      duration: 220,
-      ease: "Sine.Out",
-    });
+    if (passive) this.tweens.add({ targets: passive, alpha: 0.03, duration: 180, ease: "Sine.Out" });
+    if (active) this.tweens.add({ targets: active, alpha: 0.12, duration: 220, yoyo: true, ease: "Sine.Out" });
+    if (this.handFocus) {
+      this.tweens.add({
+        targets: this.handFocus,
+        alpha: isPlayer ? 0.12 : 0.05,
+        duration: 220,
+        ease: "Sine.Out",
+      });
+    }
     this.tweens.add({
       targets: this.slotSprites.player,
       alpha: isPlayer ? 0.52 : 0.33,
@@ -752,5 +720,9 @@ export class MatchScene extends Phaser.Scene {
       this.pulseActiveLane();
       this.lastTurn = this.viewState.currentPlayer;
     }
+  }
+
+  update(time, delta) {
+    this.backgroundLayerManager?.update(delta);
   }
 }

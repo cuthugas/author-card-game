@@ -354,3 +354,151 @@
 - AI can randomly roll either supported author.
 - Mirror and opposed-author matches are both possible.
 - Deck assignment should still keep authored cards on their correct side while allowing `Neutral` cards on both.
+
+---
+
+## 2026-04-03
+
+### Changes
+
+- Added a reusable Phaser `BackgroundLayerManager` for layered authored board backgrounds.
+- Added a Wonderland background manifest with the requested layer keys:
+  `bg_base_field`, `bg_surface_motifs`, `bg_frame_border`, four corner props, and `bg_atmosphere`.
+- Added preload hooks for future external board assets plus built-in Wonderland placeholder textures so the system works immediately without changing gameplay logic.
+- Integrated resize-aware layered background rendering into `MatchScene` with restrained drift on atmosphere and corner props only.
+
+### Notes
+
+- Fullscreen layers use cover scaling with preserved aspect ratio and are never stretched.
+- Corner props are anchored per device tier with separate phone/tablet/desktop tuning.
+- The system is intentionally modular so future themes like Shakespeare or Poe can swap in their own manifest/config without rewriting gameplay scenes.
+
+---
+
+## 2026-04-03
+
+### Changes
+
+- Continued the temporary Wonderland board isolation pass by removing the remaining visible guide-art overlays from `MatchScene`.
+- Removed remaining legacy guide visuals:
+  enemy/player lane glow guides,
+  hand focus glow,
+  and the slot-anchor outline sprites with their rounded-rect/circular ornament markings.
+- Preserved for gameplay functionality:
+  slot anchor position data,
+  deck markers,
+  card placement/interaction logic,
+  and all HUD/hand/button/turn systems.
+- Purpose remains to isolate the authored Wonderland board art as cleanly as possible for visual evaluation.
+- Continued the temporary Wonderland board-isolation pass by removing the leftover rectangle-based battlefield bars from `MatchScene`.
+- Removed/hidden rectangle-based legacy visuals:
+  the remaining enemy/player lane bar rectangles.
+- Preserved for functionality:
+  slot anchors,
+  very subtle lane glows,
+  light hand focus,
+  deck markers,
+  and all HUD/card interaction logic.
+- Purpose remains the same: evaluate the authored Wonderland board art without old shell interference.
+- Ran a temporary Wonderland board isolation pass in `MatchScene` to evaluate the authored board art without legacy shell interference.
+- Fully removed/hidden legacy battlefield-shell visuals from `drawBattlefield()`:
+  fullscreen gradient fill,
+  dark triangular backdrop shapes,
+  large table shell and shell edges,
+  inner frame shell,
+  lane inlay trims,
+  center sigil/spine/divider ornament treatment,
+  foreground fog,
+  upper focus glow,
+  hand shelf trim,
+  and the fullscreen vignette.
+- Intentionally preserved only minimal gameplay-facing guides:
+  very subtle lane glows,
+  faint lane bars,
+  hand focus,
+  deck markers,
+  slot anchors,
+  plus all HUD/card interaction layers.
+- Purpose of this pass: let the Wonderland board read mostly cleanly by itself while preserving gameplay usability.
+- Ran a focused Wonderland board-integration cleanup in `MatchScene` so the authored Wonderland art can carry the scene instead of sitting under the old battlefield shell.
+- Reduced legacy presentation elements:
+  fullscreen shell gradient,
+  dark triangular backdrop shapes,
+  central table shell and edge,
+  lane bars/inlays,
+  center sigil/spine treatment,
+  foreground fog and large focus glows,
+  and the fullscreen vignette.
+- Preserved gameplay clarity elements in a subtler form:
+  lane glows,
+  slot anchors,
+  deck markers,
+  hand shelf/focus,
+  and HUD/card interaction layers.
+- Goal of this pass: make the Wonderland board act as the actual board presentation, not a background hidden behind the old shell.
+- Ran a temporary Wonderland readability pass in `MatchScene` to let the authored background art read more clearly under the legacy board shell.
+- Reduced the legacy fullscreen shell and vignette intensity without changing gameplay layout or interaction logic.
+- Temporary test values:
+  fullscreen `bg` gradient alpha `1 -> 0.14`,
+  `boardTable` alpha `1 -> 0.28`,
+  `boardEdge` alpha `0.76 -> 0.24`,
+  `vignette` alpha `0.7 -> 0.16`.
+- Investigated whether the confirmed external Wonderland base/frame textures were being visually obscured in `MatchScene`.
+- Added a temporary one-time coverage diagnostic log showing that `backgroundArtLayer` is rendered underneath a separate `bgLayer` stack containing a fullscreen gradient, a large opaque/tinted board shell, and a strong vignette.
+- Current read: this looks like a board-coverage/composition issue first, with alpha contributing more than a true depth-order bug.
+- Tightened the temporary Wonderland on-screen debug label so it explicitly shows rendered origin and dimensions for `bg_base_field` and `bg_frame_border`.
+- Added temporary Wonderland background diagnostics to verify whether `bg_base_field` and `bg_frame_border` are using external PNGs or placeholder textures.
+- Preload now logs pre-fallback texture existence and dimensions for the Wonderland base/frame keys.
+- Background display now logs the actually displayed base/frame texture diagnostics and shows a small on-screen debug label in the top-left.
+- Normalized Wonderland background asset loading to the dedicated theme folder.
+- Confirmed the Phaser preload flow uses plain runtime-relative asset paths with no alternate base URL.
+- Final Wonderland external PNG runtime paths are now:
+  `phaser/assets/backgrounds/wonderland/bg_base_field.png`
+  and
+  `phaser/assets/backgrounds/wonderland/bg_frame_border.png`.
+- Wired real Wonderland background PNG loading into the Phaser preload flow.
+- `bg_base_field` and `bg_frame_border` now load from external PNG files.
+- Remaining Wonderland layers still intentionally fall back to generated placeholders:
+  `bg_surface_motifs`,
+  `bg_corner_tl`,
+  `bg_corner_tr`,
+  `bg_corner_bl`,
+  `bg_corner_br`,
+  and `bg_atmosphere`.
+- Performed a visual QA and polish review on the new layered Wonderland background system.
+- Reviewed:
+  `phaser/core/BackgroundLayerManager.js`,
+  `phaser/assets/backgroundManifest.js`,
+  `phaser/scenes/PreloadScene.js`,
+  and `phaser/scenes/MatchScene.js`.
+- Tightened background drift tuning so atmosphere and corner props stay more restrained across desktop, tablet, and phone.
+- Added clearer comments around:
+  per-device tuning,
+  decorative-only layer intent,
+  and future theme-manifest extension points.
+
+### Issues Reviewed
+
+- cover-scaling math
+- resize-driven relayout
+- corner anchor positioning
+- breakpoint consistency
+- atmosphere drift intensity
+- gameplay-safe visual restraint
+- scene depth ordering
+
+### Corrections Made
+
+- Reduced alpha and drift strength for decorative motif/atmosphere layers.
+- Added a separate `cornerDriftMultiplier` so corner props move less than fullscreen atmosphere.
+- Clarified that the center safe zone is a manifest-level art contract and that decorative layers should avoid clutter there.
+
+### Still Needs Manual Runtime Confirmation
+
+- real external PNG layers render in place without being overwritten by placeholder textures
+- placeholder generation still covers any Wonderland layer without an external asset path
+- note: the correct fix was path normalization in the Wonderland manifest; no preload flow change was required
+- final visual balance once real art replaces the placeholders
+- safe-zone readability on real phone aspect ratios
+- whether corner art feels properly tucked into the edges after resize/orientation changes
+- whether atmosphere motion remains subtle enough in live play
