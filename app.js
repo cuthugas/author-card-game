@@ -14,6 +14,9 @@ const AUTO_MATCH_LOG_DOWNLOAD = true;
 const DECK_AUTHOR_DEBUG =
   new URLSearchParams(window.location.search).get("deckAuthorDebug") === "1" ||
   localStorage.getItem("acg_deck_author_debug") === "1";
+const CARD_METADATA_DEBUG =
+  new URLSearchParams(window.location.search).get("cardMetaDebug") === "1" ||
+  localStorage.getItem("acg_card_meta_debug") === "1";
 const STATE_EVENT_NAME = "acg:state";
 const FX_EVENT_NAME = "acg:fx";
 const HAND_REVEAL_EVENT_NAME = "acg:hand-reveal";
@@ -26,6 +29,20 @@ const AUTHOR_TIERS = Object.freeze({
   TOP_TIER: "top_tier",
   SECONDARY: "secondary",
   SUPPORT: "support",
+});
+
+const CARD_RARITIES = Object.freeze({
+  COMMON: "common",
+  UNCOMMON: "uncommon",
+  RARE: "rare",
+  LEGENDARY: "legendary",
+});
+
+const CARD_POWER_BANDS = Object.freeze({
+  STARTER: "starter",
+  STANDARD: "standard",
+  ADVANCED: "advanced",
+  BUILDAROUND: "buildaround",
 });
 
 const AUTHOR_PROFILES = {
@@ -513,45 +530,45 @@ const refs = {
 };
 
 const cardPool = [
-  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", cost: 2, attack: 2, defense: 2, memorability: 3, tags: ["reveal", "knowledge"], themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Turns reflection into insight by reading the situation before acting.", effectText: "On Summon: Reveal a random enemy hand card and gain 1 Knowledge.", triggers: [{ event: "onSummon", effects: [{ type: "revealRandomEnemyHand" }, { type: "gainKnowledge", amount: 1 }] }] },
-  { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 5, defense: 1, memorability: 3, tags: ["pressure"], themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "None." },
-  { key: "juliet", name: "Juliet", type: "character", author: "Shakespeare", cost: 2, attack: 2, defense: 1, memorability: 2, tags: ["defeat_trigger", "pressure"], themes: ["identity", "tragedy"], who: "Juliet Capulet from Romeo and Juliet.", why: "A fragile tragic presence whose defeat still pushes the story toward the opposing writer.", effectText: "On Defeat: Deal 1 damage to the enemy Writer.", triggers: [{ event: "onDefeat", effects: [{ type: "dealDamage", target: "enemyWriter", amount: 1 }] }] },
-  { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", cost: 3, attack: 3, defense: 3, memorability: 3, tags: ["pressure", "debuff"], themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Applies immediate pressure by unsettling the enemy's best defender.", effectText: "On Summon: Strongest enemy gets -1 ATK and -1 MEM this turn.", triggers: [{ event: "onSummon", effects: [{ type: "weakenHighestEnemyTurn", attack: -1, memorability: -1 }] }] },
-  { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", cost: 4, attack: 4, defense: 4, memorability: 3, tags: ["defeat_trigger", "control"], themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "On Defeat: Destroy the weakest enemy character.", triggers: [{ event: "onDefeat", effects: [{ type: "destroyTarget", target: "enemyLowestMem" }] }] },
-  { key: "weird_sisters", name: "The Weird Sisters", type: "character", author: "Shakespeare", cost: 3, attack: 2, defense: 1, memorability: 3, tags: ["reveal", "tempo"], themes: ["ambition", "power", "tragedy"], who: "The prophetic witches of Macbeth.", why: "They dig through fate and set up future Shakespeare plays in hand.", effectText: "On Summon: Reveal your top 3 cards. Put the first Shakespeare card into your hand. Discard the rest.", triggers: [{ event: "onSummon", effects: [{ type: "peekTopDeckAuthorToHand", amount: 3, author: "Shakespeare" }] }] },
-  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 4, tags: ["tempo", "reveal"], themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Turns curiosity into momentum once the strange rules of the scene are exposed.", effectText: "On Summon: If you revealed enemy cards this turn, draw 1 card.", triggers: [{ event: "onSummon", effects: [{ type: "drawIfRevealedThisTurn", amount: 1 }] }] },
-  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", cost: 2, attack: 2, defense: 2, memorability: 3, tags: ["recursion", "defeat_trigger"], themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "On Defeat: Return this card to your hand.", triggers: [{ event: "onDefeat", effects: [{ type: "returnCardToHand", target: "self" }] }] },
-  { key: "white_rabbit", name: "White Rabbit", type: "character", author: "Lewis Carroll", cost: 2, attack: 1, defense: 2, memorability: 3, tags: ["tempo"], themes: ["curiosity", "wonderland"], who: "The hurried herald who draws Alice deeper into Wonderland.", why: "Provides momentum and card flow without being a combat-heavy body.", effectText: "On Summon: Draw 1 card.", triggers: [{ event: "onSummon", effects: [{ type: "drawCard", amount: 1 }] }] },
-  { key: "bandersnatch", name: "Bandersnatch", type: "character", author: "Lewis Carroll", cost: 3, attack: 3, defense: 2, memorability: 3, tags: ["pressure"], themes: ["curiosity", "wonderland"], who: "The dangerous creature warned about in Jabberwocky.", why: "Acts like a focused skirmisher that can slip past a lone defender without changing the broader combat rules.", effectText: "Can attack the enemy Writer directly if that enemy has exactly 1 character in play." },
-  { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", cost: 3, attack: 4, defense: 2, memorability: 2, tags: ["pressure", "reveal"], themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Turns exposed weakness into sudden writer pressure.", effectText: "On Summon: If you revealed enemy cards this turn, deal 2 damage to the enemy Writer.", triggers: [{ event: "onSummon", effects: [{ type: "dealDamageIfRevealedThisTurn", amount: 2, target: "enemyWriter" }] }] },
-  { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", cost: 4, attack: 4, defense: 3, memorability: 4, tags: ["pressure", "sustain"], themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "None." },
-  { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", subtype: "literary_device", author: "Neutral", supportFamily: "literary_device", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, tags: ["buff", "knowledge"], themes: ["power", "identity"], who: "A poetic meter of five unstressed/stressed pairs per line.", why: "Key rhythm used in Shakespeare's dramatic verse.", effectText: "Best ally gains +2 ATK and +1 MEM.", quiz: { question: "What is iambic pentameter?", options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"], correctIndex: 0, explanation: "Iambic pentameter is a 10-syllable line with five iambs." } },
-  { key: "soliloquy", name: "Soliloquy", type: "plot", subtype: "literary_device", author: "Neutral", supportFamily: "literary_device", cost: 2, effect: "damage_enemy_top_attack", value: 3, tags: ["control", "knowledge"], themes: ["identity", "ambition"], who: "A speech where a character reveals inner thoughts aloud.", why: "Used in drama to expose motivation and conflict.", effectText: "Deal 3 damage to strongest enemy.", quiz: { question: "What does a soliloquy reveal?", options: ["A character's inner thoughts", "A chorus response", "A stage direction"], correctIndex: 0, explanation: "A soliloquy reveals what a character is thinking privately." } },
-  { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Lewis Carroll", cost: 3, effect: "destroy_enemy_lowest_mem", tags: ["control", "pressure"], themes: ["curiosity", "power"], who: "Reference to the Vorpal Sword in Jabberwocky.", why: "Connects nonsense verse and heroic quest language.", effectText: "Destroy weakest enemy character." },
-  { key: "o_happy_dagger", name: "O Happy Dagger", type: "artifact", author: "Shakespeare", cost: 1, effect: "damage_enemy_writer", value: 2, tags: ["pressure"], themes: ["tragedy", "ambition"], who: "Allusion to Juliet's final line in Romeo and Juliet.", why: "Highlights tragic climax and symbolism.", effectText: "Deal 2 to enemy Reputation." },
-  { key: "yoricks_skull", name: "Yorick's Skull", type: "artifact", author: "Shakespeare", cost: 2, effect: "resurrect_character", tags: ["recursion"], themes: ["identity", "tragedy"], who: "Skull held by Hamlet in Act V.", why: "Symbolizes mortality and memory.", effectText: "Return a character from discard to hand." },
-  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Lewis Carroll", cost: 2, effect: "draw_cards", value: 2, tags: ["tempo"], themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "On Play: Draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 2 }] }] },
-  { key: "revision", name: "Revision", type: "plot", author: "Neutral", supportFamily: "writing_support", cost: 2, effect: "heal_self", value: 3, tags: ["sustain"], themes: ["identity"], who: "Reworking ideas after feedback.", why: "Shows growth and deeper understanding in writing.", effectText: "Restore 3 Reputation." },
-  { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Neutral", supportFamily: "writing_support", cost: 1, effect: "gain_inspiration", value: 2, tags: ["tempo"], themes: ["power", "ambition"], who: "Focused push to finish written work.", why: "Represents urgency and productivity pressure.", effectText: "Gain +2 Inspiration this turn." },
-  { key: "hyperbole", name: "Hyperbole", type: "plot", author: "Neutral", cost: 1, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 0 }, tags: ["buff"], themes: [], who: "Deliberate exaggeration for emphasis.", why: "Boosts a standout idea without adding a new targeting system.", effectText: "Strongest ally gains +2 ATK." },
-  { key: "internal_conflict", name: "Internal Conflict", type: "plot", author: "Neutral", cost: 2, effect: "damage_enemy_by_own_attack", tags: ["control"], themes: ["identity", "tragedy"], who: "A clash within a character that turns their own force against them.", why: "Uses current ATK as the damage source with a stable strongest-enemy fallback.", effectText: "Strongest enemy takes damage equal to its current ATK." },
-  { key: "exposition", name: "Exposition", type: "plot", author: "Neutral", cost: 1, effect: "draw_and_gain_knowledge", tags: ["tempo", "knowledge"], themes: ["identity"], who: "Context-setting information that helps a reader understand what comes next.", why: "Pairs a small cantrip effect with steady learning progress.", effectText: "On Play: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
-  { key: "suspense", name: "Suspense", type: "plot", author: "Neutral", cost: 1, effect: "reveal_random_enemy_hand", tags: ["reveal"], themes: [], who: "A tactic that heightens uncertainty before the payoff.", why: "Gives quick information without adding risky discard mechanics.", effectText: "On Play: Reveal a random enemy hand card.", triggers: [{ event: "onPlay", effects: [{ type: "revealRandomEnemyHand" }] }] },
-  { key: "foreshadowing", name: "Foreshadowing", type: "plot", author: "Neutral", cost: 2, effect: "reveal_enemy_hand_all", tags: ["reveal"], themes: [], who: "Early hints that point toward future events.", why: "Lets you scout the full enemy hand in a simple prototype-safe way.", effectText: "On Play: Reveal all enemy hand cards.", triggers: [{ event: "onPlay", effects: [{ type: "revealEnemyHandAll" }] }] },
-  { key: "protagonist", name: "Protagonist", type: "plot", author: "Neutral", cost: 2, effect: "buff_friendly_top_attack", value: { attack: 1, memorability: 1 }, tags: ["buff", "sustain"], themes: [], who: "A central figure receiving narrative focus and support.", why: "Provides a modest spotlight buff using an existing rule path.", effectText: "Strongest ally gains +1 ATK and +1 MEM." },
-  { key: "a_pound_of_flesh", name: "A Pound of Flesh", type: "plot", author: "Shakespeare", cost: 2, effect: "weaken_enemy_top_defense_turn", tags: ["debuff", "pressure"], themes: ["power", "tragedy"], who: "A merciless demand from The Merchant of Venice.", why: "Temporarily strips defense from the strongest enemy to open a short attack window.", effectText: "Strongest enemy gets -2 DEF this turn." },
-  { key: "eat_me_drink_me", name: "Eat Me / Drink Me", type: "artifact", author: "Lewis Carroll", cost: 2, effect: "swing_target_character_turn", tags: ["buff", "debuff"], themes: ["curiosity", "identity", "wonderland"], who: "Wonderland's size-shifting food and drink.", why: "Uses explicit battlefield targeting so the player can choose who grows or shrinks.", effectText: "Choose a battlefield character. Friendly: +1 ATK/+1 MEM this turn. Enemy: -1 ATK/-1 MEM this turn." },
-  { key: "tea_party_chaos", name: "Tea Party Chaos", type: "plot", author: "Lewis Carroll", cost: 3, effect: "weaken_enemy_all", value: 1, tags: ["debuff", "pressure"], themes: ["curiosity", "wonderland"], who: "Mad Tea Party scene.", why: "Highlights absurd logic and social satire.", effectText: "All enemies lose 1 ATK (min 1)." },
-  { key: "critical_essay", name: "Critical Essay", type: "plot", author: "Neutral", supportFamily: "classroom_support", cost: 1, effect: "draw_cards", value: 1, tags: ["tempo", "knowledge"], themes: ["identity", "power"], who: "Analytical writing about literature.", why: "Builds evidence-based interpretation.", effectText: "Draw 1 card." },
-  { key: "looking_glass_return", name: "Looking-Glass Return", type: "plot", author: "Lewis Carroll", cost: 2, effect: "return_low_cost_character", value: { maxCost: 2 }, tags: ["recursion", "tempo"], themes: ["curiosity", "wonderland"], who: "A mirrored step back into Wonderland's strange loops.", why: "Rebuys a small character to keep Carroll tempo turns and value chains moving.", effectText: "Return a cost 2 or less character from your discard to hand." },
-  { key: "ophelia", name: "Ophelia", type: "character", author: "Shakespeare", cost: 2, attack: 1, defense: 1, memorability: 2, tags: ["defeat_trigger", "knowledge"], themes: ["identity", "tragedy"], who: "The tragic noblewoman from Hamlet.", why: "Turns defeat into card flow and literary progress so Shakespeare sacrifice lines have more texture.", effectText: "On Defeat: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onDefeat", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
-  { key: "crowd_murmur", name: "Crowd Murmur", type: "plot", author: "Neutral", cost: 2, effect: "weaken_two_enemies_turn", value: { attack: -1, memorability: -1 }, tags: ["debuff", "control"], themes: ["power"], who: "A spreading wave of doubt that unsettles more than one target.", why: "Gives debuff decks a clean two-target support piece without adding a new subsystem.", effectText: "Two strongest enemies get -1 ATK and -1 MEM this turn." },
-  { key: "margin_notes", name: "Margin Notes", type: "plot", author: "Neutral", supportFamily: "classroom_support", cost: 1, effect: "knowledge_burst", value: { gainKnowledge: 1, threshold: 3, damage: 2 }, tags: ["knowledge", "control"], themes: ["identity", "power"], who: "Short observations that become more valuable once enough evidence has been gathered.", why: "Turns knowledge into real board pressure without making the lane too snowbally.", effectText: "Gain 1 Knowledge. If you have 3+ Knowledge, deal 2 damage to the strongest enemy." },
-  { key: "read_the_room", name: "Read the Room", type: "plot", author: "Neutral", cost: 1, effect: "reveal_payoff", value: { draw: 1, inspiration: 1 }, tags: ["reveal", "tempo"], themes: ["curiosity", "power"], who: "A quick adjustment once hidden information becomes visible.", why: "Makes reveal cards feel like part of a real engine instead of isolated scouting tools.", effectText: "If you revealed enemy cards this turn, draw 1 card and gain 1 Inspiration. Otherwise, reveal a random enemy hand card." },
-  { key: "rough_draft", name: "Rough Draft", type: "plot", author: "Neutral", supportFamily: "writing_support", cost: 2, effect: "peek_top_deck_type_to_hand", value: { count: 3, cardType: "plot" }, tags: ["tempo", "reveal"], themes: ["identity"], who: "A fast first version that helps the next idea surface quickly.", why: "Adds lightweight deck filtering for faster, smoother prototype hands.", effectText: "Reveal your top 3 cards. Put the first plot into your hand. Discard the rest." },
-  { key: "stay_of_execution", name: "Stay of Execution", type: "plot", author: "Neutral", cost: 1, effect: "restore_friendly_top_mem", value: 2, tags: ["sustain", "buff"], themes: ["power", "identity"], who: "A brief reprieve that lets a key figure remain in play a little longer.", why: "Helps slower or control-oriented shells preserve board value with a simple effect.", effectText: "Restore 2 MEM to your strongest ally." },
-  { key: "dramatic_irony", name: "Dramatic Irony", type: "plot", author: "Neutral", cost: 2, effect: "reveal_and_return_tagged_character", value: { tag: "defeat_trigger" }, tags: ["reveal", "recursion"], themes: ["identity", "tragedy"], who: "The audience sees the pattern before the characters do.", why: "Explicitly bridges Carroll reveal play and Shakespeare defeat-value play without becoming a new faction layer.", effectText: "Reveal all enemy hand cards. Return a defeat-trigger character from your discard to hand." },
-  { key: "close_reading", name: "Close Reading", type: "plot", author: "Neutral", supportFamily: "classroom_support", cost: 2, tags: ["knowledge", "tempo"], themes: ["identity", "power"], who: "A careful pass over the text that turns gathered evidence into sharper understanding.", why: "Keeps the knowledge lane's payoff slot while fitting the game's scholarly support tone better than a generic neutral person.", effectText: "On Play: Gain 1 Knowledge. If you have 3+ Knowledge, draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "gainKnowledge", amount: 1 }, { type: "drawCardIfKnowledgeAtLeast", amount: 2, threshold: 3 }] }] },
+  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, attack: 2, defense: 2, memorability: 3, tags: ["reveal", "knowledge"], themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Turns reflection into insight by reading the situation before acting.", effectText: "On Summon: Reveal a random enemy hand card and gain 1 Knowledge.", triggers: [{ event: "onSummon", effects: [{ type: "revealRandomEnemyHand" }, { type: "gainKnowledge", amount: 1 }] }] },
+  { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, attack: 5, defense: 1, memorability: 3, tags: ["pressure"], themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "None." },
+  { key: "juliet", name: "Juliet", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, attack: 2, defense: 1, memorability: 2, tags: ["defeat_trigger", "pressure"], themes: ["identity", "tragedy"], who: "Juliet Capulet from Romeo and Juliet.", why: "A fragile tragic presence whose defeat still pushes the story toward the opposing writer.", effectText: "On Defeat: Deal 1 damage to the enemy Writer.", triggers: [{ event: "onDefeat", effects: [{ type: "dealDamage", target: "enemyWriter", amount: 1 }] }] },
+  { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, attack: 3, defense: 3, memorability: 3, tags: ["pressure", "debuff"], themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Applies immediate pressure by unsettling the enemy's best defender.", effectText: "On Summon: Strongest enemy gets -1 ATK and -1 MEM this turn.", triggers: [{ event: "onSummon", effects: [{ type: "weakenHighestEnemyTurn", attack: -1, memorability: -1 }] }] },
+  { key: "prospero", name: "Prospero", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.LEGENDARY, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 4, attack: 4, defense: 4, memorability: 3, tags: ["defeat_trigger", "control"], themes: ["power", "identity", "tragedy"], who: "Exiled duke-magician from The Tempest.", why: "Explores control, forgiveness, and authority.", effectText: "On Defeat: Destroy the weakest enemy character.", triggers: [{ event: "onDefeat", effects: [{ type: "destroyTarget", target: "enemyLowestMem" }] }] },
+  { key: "weird_sisters", name: "The Weird Sisters", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, attack: 2, defense: 1, memorability: 3, tags: ["reveal", "tempo"], themes: ["ambition", "power", "tragedy"], who: "The prophetic witches of Macbeth.", why: "They dig through fate and set up future Shakespeare plays in hand.", effectText: "On Summon: Reveal your top 3 cards. Put the first Shakespeare card into your hand. Discard the rest.", triggers: [{ event: "onSummon", effects: [{ type: "peekTopDeckAuthorToHand", amount: 3, author: "Shakespeare" }] }] },
+  { key: "alice", name: "Alice", type: "character", author: "Lewis Carroll", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, attack: 2, defense: 2, memorability: 4, tags: ["tempo", "reveal"], themes: ["curiosity", "identity", "wonderland"], who: "Young protagonist of Alice's Adventures in Wonderland.", why: "Turns curiosity into momentum once the strange rules of the scene are exposed.", effectText: "On Summon: If you revealed enemy cards this turn, draw 1 card.", triggers: [{ event: "onSummon", effects: [{ type: "drawIfRevealedThisTurn", amount: 1 }] }] },
+  { key: "cheshire_cat", name: "Cheshire Cat", type: "character", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, attack: 2, defense: 2, memorability: 3, tags: ["recursion", "defeat_trigger"], themes: ["curiosity", "identity", "wonderland"], who: "Mysterious speaking cat in Wonderland.", why: "Challenges logic and guides Alice indirectly.", effectText: "On Defeat: Return this card to your hand.", triggers: [{ event: "onDefeat", effects: [{ type: "returnCardToHand", target: "self" }] }] },
+  { key: "white_rabbit", name: "White Rabbit", type: "character", author: "Lewis Carroll", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 2, attack: 1, defense: 2, memorability: 3, tags: ["tempo"], themes: ["curiosity", "wonderland"], who: "The hurried herald who draws Alice deeper into Wonderland.", why: "Provides momentum and card flow without being a combat-heavy body.", effectText: "On Summon: Draw 1 card.", triggers: [{ event: "onSummon", effects: [{ type: "drawCard", amount: 1 }] }] },
+  { key: "bandersnatch", name: "Bandersnatch", type: "character", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 3, attack: 3, defense: 2, memorability: 3, tags: ["pressure"], themes: ["curiosity", "wonderland"], who: "The dangerous creature warned about in Jabberwocky.", why: "Acts like a focused skirmisher that can slip past a lone defender without changing the broader combat rules.", effectText: "Can attack the enemy Writer directly if that enemy has exactly 1 character in play." },
+  { key: "queen_of_hearts", name: "Queen of Hearts", type: "character", author: "Lewis Carroll", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, attack: 4, defense: 2, memorability: 2, tags: ["pressure", "reveal"], themes: ["power", "wonderland"], who: "Impulsive monarch from Wonderland.", why: "Turns exposed weakness into sudden writer pressure.", effectText: "On Summon: If you revealed enemy cards this turn, deal 2 damage to the enemy Writer.", triggers: [{ event: "onSummon", effects: [{ type: "dealDamageIfRevealedThisTurn", amount: 2, target: "enemyWriter" }] }] },
+  { key: "jabberwock", name: "Jabberwock", type: "character", author: "Lewis Carroll", rarity: CARD_RARITIES.LEGENDARY, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 4, attack: 4, defense: 3, memorability: 4, tags: ["pressure", "sustain"], themes: ["curiosity", "wonderland"], who: "Nonsense-poem creature from Through the Looking-Glass.", why: "Shows imagination, language play, and mythic tone.", effectText: "None." },
+  { key: "iambic_pentameter", name: "Iambic Pentameter", type: "plot", subtype: "literary_device", author: "Neutral", supportFamily: "literary_device", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 2, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 1 }, tags: ["buff", "knowledge"], themes: ["power", "identity"], who: "A poetic meter of five unstressed/stressed pairs per line.", why: "Key rhythm used in Shakespeare's dramatic verse.", effectText: "Best ally gains +2 ATK and +1 MEM.", quiz: { question: "What is iambic pentameter?", options: ["A 10-syllable line with unstressed/stressed pattern", "A 14-line sonnet form only", "A prose speech without rhythm"], correctIndex: 0, explanation: "Iambic pentameter is a 10-syllable line with five iambs." } },
+  { key: "soliloquy", name: "Soliloquy", type: "plot", subtype: "literary_device", author: "Neutral", supportFamily: "literary_device", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "damage_enemy_top_attack", value: 3, tags: ["control", "knowledge"], themes: ["identity", "ambition"], who: "A speech where a character reveals inner thoughts aloud.", why: "Used in drama to expose motivation and conflict.", effectText: "Deal 3 damage to strongest enemy.", quiz: { question: "What does a soliloquy reveal?", options: ["A character's inner thoughts", "A chorus response", "A stage direction"], correctIndex: 0, explanation: "A soliloquy reveals what a character is thinking privately." } },
+  { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Lewis Carroll", rarity: CARD_RARITIES.LEGENDARY, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, effect: "destroy_enemy_lowest_mem", tags: ["control", "pressure"], themes: ["curiosity", "power"], who: "Reference to the Vorpal Sword in Jabberwocky.", why: "Connects nonsense verse and heroic quest language.", effectText: "Destroy weakest enemy character." },
+  { key: "o_happy_dagger", name: "O Happy Dagger", type: "artifact", author: "Shakespeare", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 1, effect: "damage_enemy_writer", value: 2, tags: ["pressure"], themes: ["tragedy", "ambition"], who: "Allusion to Juliet's final line in Romeo and Juliet.", why: "Highlights tragic climax and symbolism.", effectText: "Deal 2 to enemy Reputation." },
+  { key: "yoricks_skull", name: "Yorick's Skull", type: "artifact", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, effect: "resurrect_character", tags: ["recursion"], themes: ["identity", "tragedy"], who: "Skull held by Hamlet in Act V.", why: "Symbolizes mortality and memory.", effectText: "Return a character from discard to hand." },
+  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "draw_cards", value: 2, tags: ["tempo"], themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "On Play: Draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 2 }] }] },
+  { key: "revision", name: "Revision", type: "plot", author: "Neutral", supportFamily: "writing_support", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 2, effect: "heal_self", value: 3, tags: ["sustain"], themes: ["identity"], who: "Reworking ideas after feedback.", why: "Shows growth and deeper understanding in writing.", effectText: "Restore 3 Reputation." },
+  { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Neutral", supportFamily: "writing_support", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "gain_inspiration", value: 2, tags: ["tempo"], themes: ["power", "ambition"], who: "Focused push to finish written work.", why: "Represents urgency and productivity pressure.", effectText: "Gain +2 Inspiration this turn." },
+  { key: "hyperbole", name: "Hyperbole", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 0 }, tags: ["buff"], themes: [], who: "Deliberate exaggeration for emphasis.", why: "Boosts a standout idea without adding a new targeting system.", effectText: "Strongest ally gains +2 ATK." },
+  { key: "internal_conflict", name: "Internal Conflict", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "damage_enemy_by_own_attack", tags: ["control"], themes: ["identity", "tragedy"], who: "A clash within a character that turns their own force against them.", why: "Uses current ATK as the damage source with a stable strongest-enemy fallback.", effectText: "Strongest enemy takes damage equal to its current ATK." },
+  { key: "exposition", name: "Exposition", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "draw_and_gain_knowledge", tags: ["tempo", "knowledge"], themes: ["identity"], who: "Context-setting information that helps a reader understand what comes next.", why: "Pairs a small cantrip effect with steady learning progress.", effectText: "On Play: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
+  { key: "suspense", name: "Suspense", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "reveal_random_enemy_hand", tags: ["reveal"], themes: [], who: "A tactic that heightens uncertainty before the payoff.", why: "Gives quick information without adding risky discard mechanics.", effectText: "On Play: Reveal a random enemy hand card.", triggers: [{ event: "onPlay", effects: [{ type: "revealRandomEnemyHand" }] }] },
+  { key: "foreshadowing", name: "Foreshadowing", type: "plot", author: "Neutral", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "reveal_enemy_hand_all", tags: ["reveal"], themes: [], who: "Early hints that point toward future events.", why: "Lets you scout the full enemy hand in a simple prototype-safe way.", effectText: "On Play: Reveal all enemy hand cards.", triggers: [{ event: "onPlay", effects: [{ type: "revealEnemyHandAll" }] }] },
+  { key: "protagonist", name: "Protagonist", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "buff_friendly_top_attack", value: { attack: 1, memorability: 1 }, tags: ["buff", "sustain"], themes: [], who: "A central figure receiving narrative focus and support.", why: "Provides a modest spotlight buff using an existing rule path.", effectText: "Strongest ally gains +1 ATK and +1 MEM." },
+  { key: "a_pound_of_flesh", name: "A Pound of Flesh", type: "plot", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "weaken_enemy_top_defense_turn", tags: ["debuff", "pressure"], themes: ["power", "tragedy"], who: "A merciless demand from The Merchant of Venice.", why: "Temporarily strips defense from the strongest enemy to open a short attack window.", effectText: "Strongest enemy gets -2 DEF this turn." },
+  { key: "eat_me_drink_me", name: "Eat Me / Drink Me", type: "artifact", author: "Lewis Carroll", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 2, effect: "swing_target_character_turn", tags: ["buff", "debuff"], themes: ["curiosity", "identity", "wonderland"], who: "Wonderland's size-shifting food and drink.", why: "Uses explicit battlefield targeting so the player can choose who grows or shrinks.", effectText: "Choose a battlefield character. Friendly: +1 ATK/+1 MEM this turn. Enemy: -1 ATK/-1 MEM this turn." },
+  { key: "tea_party_chaos", name: "Tea Party Chaos", type: "plot", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, effect: "weaken_enemy_all", value: 1, tags: ["debuff", "pressure"], themes: ["curiosity", "wonderland"], who: "Mad Tea Party scene.", why: "Highlights absurd logic and social satire.", effectText: "All enemies lose 1 ATK (min 1)." },
+  { key: "critical_essay", name: "Critical Essay", type: "plot", author: "Neutral", supportFamily: "classroom_support", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "draw_cards", value: 1, tags: ["tempo", "knowledge"], themes: ["identity", "power"], who: "Analytical writing about literature.", why: "Builds evidence-based interpretation.", effectText: "Draw 1 card." },
+  { key: "looking_glass_return", name: "Looking-Glass Return", type: "plot", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "return_low_cost_character", value: { maxCost: 2 }, tags: ["recursion", "tempo"], themes: ["curiosity", "wonderland"], who: "A mirrored step back into Wonderland's strange loops.", why: "Rebuys a small character to keep Carroll tempo turns and value chains moving.", effectText: "Return a cost 2 or less character from your discard to hand." },
+  { key: "ophelia", name: "Ophelia", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, attack: 1, defense: 1, memorability: 2, tags: ["defeat_trigger", "knowledge"], themes: ["identity", "tragedy"], who: "The tragic noblewoman from Hamlet.", why: "Turns defeat into card flow and literary progress so Shakespeare sacrifice lines have more texture.", effectText: "On Defeat: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onDefeat", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
+  { key: "crowd_murmur", name: "Crowd Murmur", type: "plot", author: "Neutral", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 2, effect: "weaken_two_enemies_turn", value: { attack: -1, memorability: -1 }, tags: ["debuff", "control"], themes: ["power"], who: "A spreading wave of doubt that unsettles more than one target.", why: "Gives debuff decks a clean two-target support piece without adding a new subsystem.", effectText: "Two strongest enemies get -1 ATK and -1 MEM this turn." },
+  { key: "margin_notes", name: "Margin Notes", type: "plot", author: "Neutral", supportFamily: "classroom_support", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 1, effect: "knowledge_burst", value: { gainKnowledge: 1, threshold: 3, damage: 2 }, tags: ["knowledge", "control"], themes: ["identity", "power"], who: "Short observations that become more valuable once enough evidence has been gathered.", why: "Turns knowledge into real board pressure without making the lane too snowbally.", effectText: "Gain 1 Knowledge. If you have 3+ Knowledge, deal 2 damage to the strongest enemy." },
+  { key: "read_the_room", name: "Read the Room", type: "plot", author: "Neutral", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 1, effect: "reveal_payoff", value: { draw: 1, inspiration: 1 }, tags: ["reveal", "tempo"], themes: ["curiosity", "power"], who: "A quick adjustment once hidden information becomes visible.", why: "Makes reveal cards feel like part of a real engine instead of isolated scouting tools.", effectText: "If you revealed enemy cards this turn, draw 1 card and gain 1 Inspiration. Otherwise, reveal a random enemy hand card." },
+  { key: "rough_draft", name: "Rough Draft", type: "plot", author: "Neutral", supportFamily: "writing_support", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "peek_top_deck_type_to_hand", value: { count: 3, cardType: "plot" }, tags: ["tempo", "reveal"], themes: ["identity"], who: "A fast first version that helps the next idea surface quickly.", why: "Adds lightweight deck filtering for faster, smoother prototype hands.", effectText: "Reveal your top 3 cards. Put the first plot into your hand. Discard the rest." },
+  { key: "stay_of_execution", name: "Stay of Execution", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 1, effect: "restore_friendly_top_mem", value: 2, tags: ["sustain", "buff"], themes: ["power", "identity"], who: "A brief reprieve that lets a key figure remain in play a little longer.", why: "Helps slower or control-oriented shells preserve board value with a simple effect.", effectText: "Restore 2 MEM to your strongest ally." },
+  { key: "dramatic_irony", name: "Dramatic Irony", type: "plot", author: "Neutral", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, effect: "reveal_and_return_tagged_character", value: { tag: "defeat_trigger" }, tags: ["reveal", "recursion"], themes: ["identity", "tragedy"], who: "The audience sees the pattern before the characters do.", why: "Explicitly bridges Carroll reveal play and Shakespeare defeat-value play without becoming a new faction layer.", effectText: "Reveal all enemy hand cards. Return a defeat-trigger character from your discard to hand." },
+  { key: "close_reading", name: "Close Reading", type: "plot", author: "Neutral", supportFamily: "classroom_support", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, tags: ["knowledge", "tempo"], themes: ["identity", "power"], who: "A careful pass over the text that turns gathered evidence into sharper understanding.", why: "Keeps the knowledge lane's payoff slot while fitting the game's scholarly support tone better than a generic neutral person.", effectText: "On Play: Gain 1 Knowledge. If you have 3+ Knowledge, draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "gainKnowledge", amount: 1 }, { type: "drawCardIfKnowledgeAtLeast", amount: 2, threshold: 3 }] }] },
 ];
 
 let uid = 1;
@@ -595,6 +612,9 @@ const matchLogState = {
 };
 const viewportState = {
   syncFrame: 0,
+};
+const cardMetadataVerificationState = {
+  warnedContexts: new Set(),
 };
 
 console.log(`APP JS BUILD ${APP_BUILD_ID} LOADED`);
@@ -1092,6 +1112,7 @@ function createDeck(deckConfigOrAuthor = null) {
     deck.push(card);
   });
 
+  verifyCardCollectionMetadata(deck, `deck:${deckConfig.authors.primaryAuthor || "unknown"}`);
   return shuffle(deck);
 }
 
@@ -1161,9 +1182,23 @@ function verifyDeckAuthorRuntime(ownerKey) {
 }
 
 function inferRarity(card) {
-  if (["prospero", "jabberwock", "vorpal_strike"].includes(card.key)) return "legendary";
-  if (card.subtype === "literary_device" || card.cost >= 3) return "rare";
-  return "common";
+  if (["prospero", "jabberwock", "vorpal_strike"].includes(card.key)) return CARD_RARITIES.LEGENDARY;
+  if (["hamlet", "alice", "queen_of_hearts", "eat_me_drink_me", "dramatic_irony", "close_reading"].includes(card.key)) return CARD_RARITIES.RARE;
+  if (card.subtype === "literary_device" || card.cost >= 3) return CARD_RARITIES.UNCOMMON;
+  return CARD_RARITIES.COMMON;
+}
+
+function inferPowerBand(card) {
+  if (["hamlet", "prospero", "alice", "cheshire_cat", "yoricks_skull", "ophelia", "margin_notes", "read_the_room", "dramatic_irony", "close_reading"].includes(card.key)) {
+    return CARD_POWER_BANDS.BUILDAROUND;
+  }
+  if (["macbeth", "lady_macbeth", "weird_sisters", "queen_of_hearts", "jabberwock", "soliloquy", "vorpal_strike", "eat_me_drink_me", "tea_party_chaos", "crowd_murmur"].includes(card.key)) {
+    return CARD_POWER_BANDS.ADVANCED;
+  }
+  if (["white_rabbit", "iambic_pentameter", "revision", "deadline_surge", "hyperbole", "exposition", "suspense", "critical_essay"].includes(card.key)) {
+    return CARD_POWER_BANDS.STARTER;
+  }
+  return CARD_POWER_BANDS.STANDARD;
 }
 
 function slugifyCardMeta(value, fallback = "neutral") {
@@ -1227,9 +1262,65 @@ const VALID_LEGACY_EFFECTS = new Set([
   "restore_friendly_top_mem",
   "reveal_and_return_tagged_character",
 ]);
+const VALID_CARD_RARITIES = new Set(Object.values(CARD_RARITIES));
+const VALID_CARD_POWER_BANDS = new Set(Object.values(CARD_POWER_BANDS));
 
 function isNonNegativeNumber(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function hasValidCardMetadata(card) {
+  return Boolean(card && VALID_CARD_RARITIES.has(card.rarity) && VALID_CARD_POWER_BANDS.has(card.powerBand));
+}
+
+function describeCardMetadataIssue(card) {
+  const problems = [];
+  if (!VALID_CARD_RARITIES.has(card?.rarity)) problems.push(`rarity=${card?.rarity ?? "missing"}`);
+  if (!VALID_CARD_POWER_BANDS.has(card?.powerBand)) problems.push(`powerBand=${card?.powerBand ?? "missing"}`);
+  return problems.join(", ");
+}
+
+function verifyCardMetadata(card, context = "runtime") {
+  if (hasValidCardMetadata(card)) {
+    if (CARD_METADATA_DEBUG) {
+      console.assert(true, `[ACG Card Metadata] ${context}`, {
+        key: card?.key,
+        uid: card?.uid,
+        rarity: card?.rarity,
+        powerBand: card?.powerBand,
+      });
+    }
+    return true;
+  }
+
+  const issueKey = `${context}:${card?.uid || card?.key || "unknown"}`;
+  console.assert(false, `[ACG Card Metadata] Invalid metadata in ${context}`, {
+    key: card?.key,
+    uid: card?.uid,
+    rarity: card?.rarity,
+    powerBand: card?.powerBand,
+  });
+  if (!cardMetadataVerificationState.warnedContexts.has(issueKey)) {
+    cardMetadataVerificationState.warnedContexts.add(issueKey);
+    console.warn(`[ACG Card Metadata] Invalid metadata for ${card?.name || card?.key || "unknown card"} in ${context}: ${describeCardMetadataIssue(card)}`);
+  }
+  return false;
+}
+
+function verifyCardCollectionMetadata(cards = [], context = "collection") {
+  let invalidCount = 0;
+  cards.forEach((card, index) => {
+    if (!verifyCardMetadata(card, `${context}[${index}]`)) invalidCount += 1;
+  });
+
+  if (CARD_METADATA_DEBUG) {
+    console.info(`[ACG Card Metadata] ${context} verified`, {
+      count: cards.length,
+      invalidCount,
+    });
+  }
+
+  return invalidCount === 0;
 }
 
 function enrichCardDefinition(card) {
@@ -1259,7 +1350,8 @@ function enrichCardDefinition(card) {
     isNeutral: card.isNeutral ?? (!card.author || card.author === "Neutral"),
     maxCopies: Number.isInteger(card.maxCopies) ? card.maxCopies : null,
     deckLimit: Number.isInteger(card.deckLimit) ? card.deckLimit : (Number.isInteger(card.maxCopies) ? card.maxCopies : null),
-    rarity: card.rarity || inferRarity(card),
+    rarity: VALID_CARD_RARITIES.has(card.rarity) ? card.rarity : inferRarity(card),
+    powerBand: VALID_CARD_POWER_BANDS.has(card.powerBand) ? card.powerBand : inferPowerBand(card),
     isToken: Boolean(card.isToken),
     set: card.set || CORE_SET_KEY,
     keywords: normalizedKeywords,
@@ -1296,6 +1388,10 @@ function validateCardDefinitions(cards) {
     }
     if (!card?.author) warn(card, "missing author");
     else if (!getAuthorProfile(card.author)) warn(card, `author '${card.author}' is missing from AUTHOR_PROFILES`);
+    if (!card?.rarity) warn(card, `missing rarity; defaulting to ${enriched.rarity}`);
+    else if (!VALID_CARD_RARITIES.has(card.rarity)) warn(card, `invalid rarity '${card.rarity}'`);
+    if (!card?.powerBand) warn(card, `missing powerBand; defaulting to ${enriched.powerBand}`);
+    else if (!VALID_CARD_POWER_BANDS.has(card.powerBand)) warn(card, `invalid powerBand '${card.powerBand}'`);
 
     if (!enriched.id) warn(card, "missing id");
     else if (idToIndex.has(enriched.id)) warnings.push(`[${card.key || index}] duplicate id also used at index ${idToIndex.get(enriched.id)}`);
@@ -1403,11 +1499,13 @@ function cloneCardTemplate(card, runtimeOverrides = {}) {
   };
   cloned.origin = cloned.runtime.origin;
   cloned.rarity = baseCard.rarity;
+  cloned.powerBand = baseCard.powerBand;
   cloned.uid = `${baseCard.key}_${uid++}`;
   if (cloned.type === "character") {
     cloned.currentMemorability = cloned.memorability;
     cloned.exhausted = false;
   }
+  verifyCardMetadata(cloned, `clone:${cloned.key}`);
   return cloned;
 }
 
@@ -2200,6 +2298,8 @@ function initGame(playerAuthor = selectedPlayerAuthor, aiAuthor = getRandomAutho
     player: newPlayer("You", playerAuthor),
     ai: newPlayer("AI", aiAuthor),
   };
+  verifyCardCollectionMetadata(state.player.deck, "init:player_deck");
+  verifyCardCollectionMetadata(state.ai.deck, "init:ai_deck");
   verifyDeckAuthorRuntime("player");
   verifyDeckAuthorRuntime("ai");
   prevBoardUids = { player: new Set(), ai: new Set() };
@@ -2812,6 +2912,7 @@ function resetTurnFlags(ownerKey) {
 }
 
 function mapCardForReveal(card) {
+  verifyCardMetadata(card, `reveal:${card?.uid || card?.key || "unknown"}`);
   return {
     id: card.id,
     uid: card.uid,
@@ -2833,6 +2934,7 @@ function mapCardForReveal(card) {
     functionText: card.why || "",
     exhausted: Boolean(card.exhausted),
     rarity: card.rarity || "common",
+    powerBand: card.powerBand || CARD_POWER_BANDS.STANDARD,
     set: card.set || CORE_SET_KEY,
     keywords: card.keywords ? [...card.keywords] : [],
     tags: card.tags ? [...card.tags] : [],
@@ -3306,6 +3408,7 @@ function render() {
 }
 
 function buildCardEl(card, options = {}) {
+  verifyCardMetadata(card, `dom_render:${card?.uid || card?.key || "unknown"}`);
   const node = refs.cardTemplate.content.firstElementChild.cloneNode(true);
   node.dataset.cardUid = card.uid;
   node.dataset.rarity = card.rarity;

@@ -361,6 +361,18 @@
 
 ### Changes
 
+- Ran a verification pass on the new `rarity` and `powerBand` metadata.
+- Added low-noise runtime assertions at deck creation, card cloning, reveal payload mapping, and DOM card rendering so missing or invalid metadata surfaces immediately without spamming normal play.
+- Confirmed the live pool is fully annotated in code and that current gameplay flow remains unchanged unless a metadata issue is detected.
+
+### Changes
+
+- Added first-pass structured card metadata for `rarity` and `powerBand` in `app.js`.
+- Annotated the full live card pool with explicit `common`/`uncommon`/`rare`/`legendary` and `starter`/`standard`/`advanced`/`buildaround` values.
+- Added normalization and validation fallbacks so future cards can safely participate in unlock tables, starter deck filters, and progression tooling without changing live gameplay.
+
+### Changes
+
 - Updated end-of-match `Play Again` flow so it now returns to author selection instead of immediately starting another match with the same setup.
 - Both DOM and Phaser winner-overlay restart paths now use the shared author-selection flow, and the hand/target/quiz/winner end-of-match state is cleared before the picker reopens.
 - Previous-author usability is preserved through the existing selection state, but the player must actively confirm the next author choice before a new match starts.
