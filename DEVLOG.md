@@ -361,6 +361,77 @@
 
 ### Changes
 
+- Updated end-of-match `Play Again` flow so it now returns to author selection instead of immediately starting another match with the same setup.
+- Both DOM and Phaser winner-overlay restart paths now use the shared author-selection flow, and the hand/target/quiz/winner end-of-match state is cleared before the picker reopens.
+- Previous-author usability is preserved through the existing selection state, but the player must actively confirm the next author choice before a new match starts.
+
+### Changes
+
+- Continued the focused `MatchScene` hand readability pass after the earlier increase still felt too restrained.
+- Increased non-phone hand card scale again and widened the fan spread further so titles, art, and costs are easier to read at a glance.
+- Raised the non-phone hand a bit more and relaxed side padding again so the larger hand clears the bottom frame ornament without re-enlarging the battlefield.
+
+### Changes
+
+- Ran a focused hand readability pass in `MatchScene`.
+- Increased non-phone `handScale` so player-hand cards read larger without re-enlarging the full battlefield UI.
+- Widened non-phone hand spread and relaxed side padding so larger hand cards overlap less and remain easier to scan.
+- Raised the non-phone hand slightly higher to reduce tangling with the bottom Wonderland frame ornament.
+
+### Changes
+
+- Restored automatic post-match log download behavior.
+- Root cause:
+  the match logger had become effectively dev-only because log capture and export were gated behind the `DEV_MATCH_LOG` flag, so normal matches never opened a live log session.
+- Fix:
+  re-enabled match log capture for normal play, kept the existing structured event recording path, and restored automatic CSV download at match end using the existing browser-side export flow.
+- Added a one-download-per-match guard and kept fresh match-log reset behavior through the existing `startMatchLog()` path.
+
+### Changes
+
+- Ran a verification/debug pass on the declared-author deck architecture.
+- Traced current match startup through deck-config normalization, `newPlayer`, `createDeck`, and author-rule application to confirm the live one-primary-author flow still uses the new structure safely.
+- Added low-noise runtime verification hooks that assert:
+  primary-author,
+  secondary-author probe,
+  neutral,
+  and off-author classification behavior without changing normal gameplay output.
+- Confirmed live default decks still classify as:
+  primary + neutral only,
+  with no off-author cards entering current default deck lists.
+- Extracted off-author penalty resolution into a small helper so the existing `-1 MEM` behavior is still read from central config and can be verified cleanly.
+
+### Changes
+
+- Added the first lightweight declared-author deckbuilding architecture pass in `app.js`.
+- Deck configs can now declare:
+  `primaryAuthor`,
+  `secondaryAuthors`,
+  and centralized author-deck rules without changing the live match UI yet.
+- Expanded central author metadata so authors now carry scalable fields such as:
+  `tier`,
+  `coreTags`,
+  and `styleProfile`,
+  while preserving the existing visible `author` card field and current passive behavior.
+- Added reusable helpers for future deck validation and progression work:
+  `isNeutralCard`,
+  `isDeclaredAuthorCard`,
+  `getCardAuthorStatus`,
+  and `validateDeckAuthors`.
+- Added off-author rule scaffolding through central deck-author rules including:
+  `allowOffAuthorCards`,
+  `offAuthorPenaltyType`,
+  and `offAuthorPenaltyValue`.
+- Kept current gameplay intact by preserving the live one-primary-author flow and using the new deck declaration structure underneath it.
+
+### Changes
+
+- Ran a focused battlefield card scale pass in `MatchScene`.
+- Increased `boardScale` across phone/compact/medium/desktop/wide so cards on the playing lanes read more clearly without re-enlarging the hand.
+- Kept hand sizing/layout roughly intact, then slightly widened non-phone battlefield width caps so the larger board cards still breathe cleanly on the Wonderland board.
+
+### Changes
+
 - Ran a focused Wonderland cleanup pass to remove leftover placeholder-style background artifacts and reduce match-scene UI footprint.
 - Disabled the optional placeholder motif layer and all corner placeholder layers in the Wonderland background manifest.
 - Root cause of the remaining blue rectangle / decorative line / red rose-like artifacts:

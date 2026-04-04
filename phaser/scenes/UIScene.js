@@ -129,7 +129,7 @@ export class UIScene extends Phaser.Scene {
 
     this.turnBanner = new TurnBanner(this);
     this.quizOverlay = new QuizOverlay(this);
-    this.winnerOverlay = new WinnerOverlay(this, () => this.adapter.actions.newGame?.());
+    this.winnerOverlay = new WinnerOverlay(this, () => this.adapter.actions.returnToAuthorSelection?.());
     this.handRevealShade = this.add.rectangle(w * 0.5, h * 0.5, w, h, 0x05070b, 0.48).setVisible(false).setAlpha(0).setDepth(1180);
     this.handRevealShade.setInteractive();
     this.handRevealShade.on("pointerdown", () => this.hideHandReveal());

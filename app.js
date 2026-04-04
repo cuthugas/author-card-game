@@ -10,6 +10,10 @@ const DEBUG_DOM_UI = Boolean(window.__ACG_DEBUG_DOM_UI);
 const DEV_MATCH_LOG =
   new URLSearchParams(window.location.search).get("devMatchLog") === "1" ||
   localStorage.getItem("acg_dev_match_log") === "1";
+const AUTO_MATCH_LOG_DOWNLOAD = true;
+const DECK_AUTHOR_DEBUG =
+  new URLSearchParams(window.location.search).get("deckAuthorDebug") === "1" ||
+  localStorage.getItem("acg_deck_author_debug") === "1";
 const STATE_EVENT_NAME = "acg:state";
 const FX_EVENT_NAME = "acg:fx";
 const HAND_REVEAL_EVENT_NAME = "acg:hand-reveal";
@@ -18,12 +22,64 @@ const PHONE_ROTATE_SHORT_SIDE = 600;
 const APP_BUILD_ID = "LOCAL-2026-04-03-B";
 window.__ACG_APP_BUILD_ID = APP_BUILD_ID;
 
+const AUTHOR_TIERS = Object.freeze({
+  TOP_TIER: "top_tier",
+  SECONDARY: "secondary",
+  SUPPORT: "support",
+});
+
 const AUTHOR_PROFILES = {
-  Shakespeare: { passive: "Tragedy-aligned characters gain +1 ATK when summoned.", bonusTag: "tragedy" },
-  "Lewis Carroll": { passive: "Lewis Carroll characters with wonderland themes gain +1 MEM when summoned.", bonusTag: "wonderland" },
+  Shakespeare: {
+    passive: "Tragedy-aligned characters gain +1 ATK when summoned.",
+    bonusTag: "tragedy",
+    tier: AUTHOR_TIERS.TOP_TIER,
+    coreTags: ["pressure", "defeat_trigger", "reveal", "knowledge"],
+    styleProfile: {
+      pace: "midrange_pressure",
+      combatStyle: "aggressive_tragedy",
+      supportIdentity: "knowledge_setup",
+    },
+    selectable: true,
+  },
+  "Lewis Carroll": {
+    passive: "Lewis Carroll characters with wonderland themes gain +1 MEM when summoned.",
+    bonusTag: "wonderland",
+    tier: AUTHOR_TIERS.TOP_TIER,
+    coreTags: ["tempo", "reveal", "pressure", "recursion"],
+    styleProfile: {
+      pace: "tempo_trickery",
+      combatStyle: "slippery_pressure",
+      supportIdentity: "reveal_value",
+    },
+    selectable: true,
+  },
+  Neutral: {
+    passive: "Neutral cards do not grant an author passive bonus.",
+    bonusTag: null,
+    tier: AUTHOR_TIERS.SUPPORT,
+    coreTags: ["bridge_support", "knowledge", "reveal", "sustain"],
+    styleProfile: {
+      pace: "glue_support",
+      combatStyle: "utility",
+      supportIdentity: "cross_author_bridge",
+    },
+    selectable: false,
+  },
 };
-const SUPPORTED_AUTHORS = Object.keys(AUTHOR_PROFILES);
+const SUPPORTED_AUTHORS = Object.keys(AUTHOR_PROFILES).filter((author) => AUTHOR_PROFILES[author]?.selectable);
 const DEFAULT_PLAYER_AUTHOR = SUPPORTED_AUTHORS[0] || "Shakespeare";
+const PRIMARY_AUTHOR_KEYS = new Set(SUPPORTED_AUTHORS);
+
+const DEFAULT_DECK_AUTHOR_RULES = Object.freeze({
+  allowSecondaryAuthors: true,
+  maxSecondaryAuthors: 1,
+  allowNeutralCards: true,
+  allowOffAuthorCards: false,
+  offAuthorPenaltyType: "memorability",
+  offAuthorPenaltyValue: 1,
+  topTierAuthors: SUPPORTED_AUTHORS.filter((author) => AUTHOR_PROFILES[author]?.tier === AUTHOR_TIERS.TOP_TIER),
+  secondaryTierAuthors: SUPPORTED_AUTHORS.filter((author) => AUTHOR_PROFILES[author]?.tier === AUTHOR_TIERS.SECONDARY),
+});
 
 const MATCH_THEMES = [
   { key: "ambition", label: "Theme: Ambition", description: "Reward cards tied to ambition and power struggles." },
@@ -399,7 +455,6 @@ const QUICK_CHECK_BANKS = {
 
 const QUICK_CHECK_BANK = Object.values(QUICK_CHECK_BANKS).flat();
 const CORE_SET_KEY = "prototype-core";
-const PRIMARY_AUTHOR_KEYS = new Set(["Shakespeare", "Lewis Carroll"]);
 const PLAYER_HAND_LIMIT = 6;
 
 const refs = {
@@ -583,7 +638,18 @@ function currentActorLabel(actor) {
 }
 
 function matchLoggerEnabled() {
+  return AUTO_MATCH_LOG_DOWNLOAD || DEV_MATCH_LOG;
+}
+
+function showMatchLogExportButton() {
   return DEV_MATCH_LOG;
+}
+
+function getMatchLogDownloadName() {
+  const winnerLabel = matchLogState.finished && state?.winner
+    ? `_${state.winner === "player" ? "player_win" : "ai_win"}`
+    : "";
+  return `acg_match_${matchLogState.matchId}${winnerLabel}.csv`;
 }
 
 function normalizeMatchLogField(value) {
@@ -681,13 +747,14 @@ function buildMatchLogCsv() {
 
 function exportMatchLogCsv(trigger = "manual") {
   if (!matchLoggerEnabled() || !matchLogState.matchId || !matchLogState.events.length) return false;
+  if (matchLogState.exported) return false;
   try {
     const csv = buildMatchLogCsv();
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `acg_match_${matchLogState.matchId}.csv`;
+    anchor.download = getMatchLogDownloadName();
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -715,7 +782,7 @@ function finishMatchLog(context = {}) {
 }
 
 function ensureDevMatchExportButton() {
-  if (!matchLoggerEnabled() || !refs.topbarActions || matchLogState.exportButton) return;
+  if (!showMatchLogExportButton() || !refs.topbarActions || matchLogState.exportButton) return;
   const button = document.createElement("button");
   button.type = "button";
   button.className = "button icon-button secondary";
@@ -821,8 +888,151 @@ function notifyStateChanged() {
   window.dispatchEvent(new CustomEvent(STATE_EVENT_NAME, { detail: snapshot }));
 }
 
-function newPlayer(name, activeAuthor) {
-  return { name, reputation: STARTING_REPUTATION, maxInspiration: 0, inspiration: 0, knowledge: 0, activeAuthor, deck: createDeck(activeAuthor), hand: [], board: [], discard: [], hasDrawnThisTurn: false, turnFlags: { revealedEnemyCards: false } };
+function getAuthorProfile(authorName) {
+  return AUTHOR_PROFILES[authorName] || null;
+}
+
+function isNeutralCard(card) {
+  return Boolean(card?.isNeutral || !card?.author || card.author === "Neutral");
+}
+
+function normalizeDeclaredAuthors(primaryAuthor = null, secondaryAuthors = []) {
+  const normalizedPrimary = typeof primaryAuthor === "string" && primaryAuthor.trim() ? primaryAuthor.trim() : null;
+  const normalizedSecondary = Array.isArray(secondaryAuthors)
+    ? [...new Set(secondaryAuthors
+      .filter((author) => typeof author === "string")
+      .map((author) => author.trim())
+      .filter((author) => author && author !== "Neutral" && author !== normalizedPrimary))]
+    : [];
+
+  return {
+    primaryAuthor: normalizedPrimary,
+    secondaryAuthors: normalizedSecondary,
+  };
+}
+
+function createDeckConfig(input = {}) {
+  if (typeof input === "string") {
+    input = { primaryAuthor: input };
+  }
+
+  const authors = normalizeDeclaredAuthors(input.primaryAuthor, input.secondaryAuthors);
+  return {
+    authors,
+    rules: {
+      ...DEFAULT_DECK_AUTHOR_RULES,
+      ...(input.rules || {}),
+    },
+  };
+}
+
+function normalizeDeckConfig(deckConfigOrAuthor = null) {
+  if (!deckConfigOrAuthor) return createDeckConfig();
+  if (typeof deckConfigOrAuthor === "string") return createDeckConfig({ primaryAuthor: deckConfigOrAuthor });
+  if (deckConfigOrAuthor.authors || deckConfigOrAuthor.rules) {
+    return createDeckConfig({
+      primaryAuthor: deckConfigOrAuthor.authors?.primaryAuthor ?? deckConfigOrAuthor.primaryAuthor ?? null,
+      secondaryAuthors: deckConfigOrAuthor.authors?.secondaryAuthors ?? deckConfigOrAuthor.secondaryAuthors ?? [],
+      rules: deckConfigOrAuthor.rules || {},
+    });
+  }
+  return createDeckConfig(deckConfigOrAuthor);
+}
+
+function getDeckAuthorDeclaration(deckConfigOrOwner = null) {
+  const normalized = normalizeDeckConfig(deckConfigOrOwner?.deckConfig || deckConfigOrOwner);
+  return normalized.authors;
+}
+
+function getCardAuthorStatus(card, deckConfigOrOwner = null) {
+  if (isNeutralCard(card)) return "neutral";
+  const declaration = getDeckAuthorDeclaration(deckConfigOrOwner);
+  if (card?.author && declaration.primaryAuthor === card.author) return "primary";
+  if (card?.author && declaration.secondaryAuthors.includes(card.author)) return "secondary";
+  return "off_author";
+}
+
+function isDeclaredAuthorCard(card, deckConfigOrOwner = null) {
+  const status = getCardAuthorStatus(card, deckConfigOrOwner);
+  return status === "primary" || status === "secondary";
+}
+
+function getOffAuthorPenalty(card, deckConfigOrOwner = null) {
+  if (isNeutralCard(card)) return null;
+  if (getCardAuthorStatus(card, deckConfigOrOwner) !== "off_author") return null;
+
+  const deckConfig = normalizeDeckConfig(deckConfigOrOwner?.deckConfig || deckConfigOrOwner);
+  const penaltyType = deckConfig.rules?.offAuthorPenaltyType;
+  const penaltyValue = Number(deckConfig.rules?.offAuthorPenaltyValue) || 0;
+
+  if (penaltyType === "memorability" && penaltyValue > 0) {
+    return {
+      type: penaltyType,
+      value: penaltyValue,
+    };
+  }
+
+  return null;
+}
+
+function validateDeckAuthors(deckConfigOrAuthor = null, cards = []) {
+  const deckConfig = normalizeDeckConfig(deckConfigOrAuthor);
+  const { primaryAuthor, secondaryAuthors } = deckConfig.authors;
+  const warnings = [];
+
+  if (!primaryAuthor) warnings.push("deck is missing a primary author declaration");
+  if (primaryAuthor === "Neutral") warnings.push("Neutral cannot be used as a primary author");
+  if (primaryAuthor && !getAuthorProfile(primaryAuthor)) warnings.push(`unknown primary author '${primaryAuthor}'`);
+  if (secondaryAuthors.length > (deckConfig.rules.maxSecondaryAuthors ?? 0)) {
+    warnings.push(`secondary author count ${secondaryAuthors.length} exceeds maxSecondaryAuthors ${deckConfig.rules.maxSecondaryAuthors}`);
+  }
+  if (!deckConfig.rules.allowSecondaryAuthors && secondaryAuthors.length > 0) {
+    warnings.push("secondary authors are declared while allowSecondaryAuthors is false");
+  }
+  secondaryAuthors.forEach((author) => {
+    if (!getAuthorProfile(author)) warnings.push(`unknown secondary author '${author}'`);
+    if (author === "Neutral") warnings.push("Neutral cannot be declared as a secondary author");
+  });
+
+  let offAuthorCards = 0;
+  cards.forEach((card) => {
+    const status = getCardAuthorStatus(card, deckConfig);
+    if (status === "off_author") offAuthorCards += 1;
+  });
+  if (offAuthorCards > 0 && !deckConfig.rules.allowOffAuthorCards) {
+    warnings.push(`deck contains ${offAuthorCards} off-author card(s) while allowOffAuthorCards is false`);
+  }
+
+  return {
+    isValid: warnings.length === 0,
+    warnings,
+    deckConfig,
+  };
+}
+
+window.__ACGAuthorProfiles = AUTHOR_PROFILES;
+window.__ACGDeckAuthorRules = DEFAULT_DECK_AUTHOR_RULES;
+window.__ACGGetCardAuthorStatus = getCardAuthorStatus;
+window.__ACGValidateDeckAuthors = validateDeckAuthors;
+
+function newPlayer(name, activeAuthor, deckConfigInput = null) {
+  const deckConfig = normalizeDeckConfig(deckConfigInput || { primaryAuthor: activeAuthor });
+  const resolvedPrimaryAuthor = deckConfig.authors.primaryAuthor || activeAuthor;
+  return {
+    name,
+    reputation: STARTING_REPUTATION,
+    maxInspiration: 0,
+    inspiration: 0,
+    knowledge: 0,
+    activeAuthor: resolvedPrimaryAuthor,
+    deckConfig,
+    deck: createDeck(deckConfig),
+    hand: [],
+    board: [],
+    discard: [],
+    hasDrawnThisTurn: false,
+    turnFlags: { revealedEnemyCards: false },
+  };
 }
 
 function getDeckIdentity(card) {
@@ -847,12 +1057,20 @@ function createCardRuntimeMeta(card, overrides = {}) {
   };
 }
 
-function createDeck(activeAuthor = null) {
+function createDeck(deckConfigOrAuthor = null) {
+  const deckConfig = normalizeDeckConfig(deckConfigOrAuthor);
+  const deckValidation = validateDeckAuthors(deckConfig);
+  if (!deckValidation.isValid) {
+    console.warn("[ACG Deck Validation]", deckValidation.warnings);
+  }
+
   const deck = [];
   const copyCounts = new Map();
   const eligibleCards = cardPool.filter((definition) => {
-    if (!activeAuthor) return true;
-    return definition.author === activeAuthor || definition.author === "Neutral";
+    const status = getCardAuthorStatus(definition, deckConfig);
+    if (status === "neutral") return deckConfig.rules.allowNeutralCards;
+    if (status === "primary" || status === "secondary") return true;
+    return deckConfig.rules.allowOffAuthorCards;
   });
 
   // Deck construction rules only apply while assembling a deck list.
@@ -875,6 +1093,71 @@ function createDeck(activeAuthor = null) {
   });
 
   return shuffle(deck);
+}
+
+function summarizeDeckAuthorStatuses(cards = [], deckConfigOrOwner = null) {
+  return cards.reduce((summary, card) => {
+    const status = getCardAuthorStatus(card, deckConfigOrOwner);
+    summary[status] = (summary[status] || 0) + 1;
+    return summary;
+  }, { primary: 0, secondary: 0, neutral: 0, off_author: 0 });
+}
+
+function verifyDeckAuthorRuntime(ownerKey) {
+  const owner = state?.[ownerKey];
+  if (!owner) return;
+
+  const validation = validateDeckAuthors(owner.deckConfig, owner.deck);
+  const statusCounts = summarizeDeckAuthorStatuses(owner.deck || [], owner);
+  const declaration = getDeckAuthorDeclaration(owner);
+  const samplePrimary = (owner.deck || []).find((card) => getCardAuthorStatus(card, owner) === "primary") || null;
+  const sampleNeutral = (owner.deck || []).find((card) => getCardAuthorStatus(card, owner) === "neutral") || null;
+  const sampleOffAuthor = cardPool.find((card) => !isNeutralCard(card) && card.author !== declaration.primaryAuthor) || null;
+  const secondaryProbeConfig = sampleOffAuthor
+    ? createDeckConfig({
+      primaryAuthor: declaration.primaryAuthor,
+      secondaryAuthors: [sampleOffAuthor.author],
+      rules: owner.deckConfig?.rules || {},
+    })
+    : null;
+  const offAuthorPenalty = sampleOffAuthor ? getOffAuthorPenalty(sampleOffAuthor, owner) : null;
+
+  console.assert(declaration.primaryAuthor === owner.activeAuthor, `[ACG Deck Verify] ${ownerKey} primary author should match activeAuthor`);
+  console.assert(validation.isValid, `[ACG Deck Verify] ${ownerKey} deck validation should pass`, validation.warnings);
+  console.assert(statusCounts.off_author === 0, `[ACG Deck Verify] ${ownerKey} live deck should not contain off-author cards`, statusCounts);
+  console.assert(samplePrimary ? getCardAuthorStatus(samplePrimary, owner) === "primary" : true, `[ACG Deck Verify] ${ownerKey} primary sample misclassified`);
+  console.assert(sampleNeutral ? getCardAuthorStatus(sampleNeutral, owner) === "neutral" : true, `[ACG Deck Verify] ${ownerKey} neutral sample misclassified`);
+  console.assert(sampleOffAuthor ? getCardAuthorStatus(sampleOffAuthor, owner) === "off_author" : true, `[ACG Deck Verify] ${ownerKey} off-author sample misclassified`);
+  console.assert(sampleOffAuthor && secondaryProbeConfig ? getCardAuthorStatus(sampleOffAuthor, secondaryProbeConfig) === "secondary" : true, `[ACG Deck Verify] ${ownerKey} secondary probe misclassified`);
+  console.assert(samplePrimary ? getOffAuthorPenalty(samplePrimary, owner) == null : true, `[ACG Deck Verify] ${ownerKey} primary card should not receive off-author penalty`);
+  console.assert(sampleNeutral ? getOffAuthorPenalty(sampleNeutral, owner) == null : true, `[ACG Deck Verify] ${ownerKey} neutral card should not receive off-author penalty`);
+  console.assert(sampleOffAuthor ? offAuthorPenalty?.type === "memorability" && offAuthorPenalty?.value === 1 : true, `[ACG Deck Verify] ${ownerKey} off-author penalty config mismatch`, offAuthorPenalty);
+
+  if (!validation.isValid || statusCounts.off_author > 0) {
+    console.warn(`[ACG Deck Verify] ${ownerKey} deck author verification found issues`, {
+      validationWarnings: validation.warnings,
+      statusCounts,
+      declaration,
+    });
+    return;
+  }
+
+  if (DECK_AUTHOR_DEBUG) {
+    console.groupCollapsed(`[ACG Deck Verify] ${ownerKey}`);
+    console.info("declaration", declaration);
+    console.info("rules", owner.deckConfig?.rules || DEFAULT_DECK_AUTHOR_RULES);
+    console.info("statusCounts", statusCounts);
+    console.info("samples", {
+      primary: samplePrimary ? { name: samplePrimary.name, author: samplePrimary.author, status: getCardAuthorStatus(samplePrimary, owner) } : null,
+      neutral: sampleNeutral ? { name: sampleNeutral.name, author: sampleNeutral.author, status: getCardAuthorStatus(sampleNeutral, owner) } : null,
+      offAuthor: sampleOffAuthor ? { name: sampleOffAuthor.name, author: sampleOffAuthor.author, status: getCardAuthorStatus(sampleOffAuthor, owner) } : null,
+      secondaryProbe: sampleOffAuthor && secondaryProbeConfig
+        ? { name: sampleOffAuthor.name, author: sampleOffAuthor.author, status: getCardAuthorStatus(sampleOffAuthor, secondaryProbeConfig) }
+        : null,
+    });
+    console.info("offAuthorPenalty", offAuthorPenalty);
+    console.groupEnd();
+  }
 }
 
 function inferRarity(card) {
@@ -955,6 +1238,7 @@ function enrichCardDefinition(card) {
   const normalizedThemes = card.themes ? [...card.themes] : [];
   const normalizedKeywords = card.keywords ? [...card.keywords] : [];
   const normalizedTags = new Set(card.tags || []);
+  const authorProfile = getAuthorProfile(card.author || "Neutral");
   if (normalizedSubtype) normalizedTags.add(normalizedSubtype);
   normalizedThemes.forEach((theme) => normalizedTags.add(slugifyCardMeta(theme, theme)));
 
@@ -965,6 +1249,12 @@ function enrichCardDefinition(card) {
     cardType: normalizedType,
     subtype: normalizedSubtype,
     author: card.author || "Neutral",
+    authorTier: authorProfile?.tier || null,
+    authorMeta: authorProfile ? {
+      tier: authorProfile.tier || null,
+      coreTags: [...(authorProfile.coreTags || [])],
+      styleProfile: authorProfile.styleProfile ? { ...authorProfile.styleProfile } : null,
+    } : null,
     affiliation: inferCardAffiliation(card),
     isNeutral: card.isNeutral ?? (!card.author || card.author === "Neutral"),
     maxCopies: Number.isInteger(card.maxCopies) ? card.maxCopies : null,
@@ -1005,6 +1295,7 @@ function validateCardDefinitions(cards) {
       warn(card, `type/cardType mismatch after normalization (${card.type} -> ${enriched.cardType})`);
     }
     if (!card?.author) warn(card, "missing author");
+    else if (!getAuthorProfile(card.author)) warn(card, `author '${card.author}' is missing from AUTHOR_PROFILES`);
 
     if (!enriched.id) warn(card, "missing id");
     else if (idToIndex.has(enriched.id)) warnings.push(`[${card.key || index}] duplicate id also used at index ${idToIndex.get(enriched.id)}`);
@@ -1873,6 +2164,22 @@ function hideAuthorSelection() {
   refs.authorSelectModal?.classList.add("hidden");
 }
 
+function returnToAuthorSelection() {
+  clearPlayerActionSelections();
+  hideWinnerBanner();
+  hideQuizModal();
+  closeAllDrawers();
+
+  if (state) {
+    state.pendingQuiz = false;
+    state.pendingTarget = null;
+    state.pendingHandDiscard = null;
+    state.selectedAttackerUid = null;
+  }
+
+  showAuthorSelection();
+}
+
 function startMatchFromSelection() {
   selectedPlayerAuthor = refs.playerAuthorSelect?.value || DEFAULT_PLAYER_AUTHOR;
   initGame(selectedPlayerAuthor, getRandomAuthor());
@@ -1893,6 +2200,8 @@ function initGame(playerAuthor = selectedPlayerAuthor, aiAuthor = getRandomAutho
     player: newPlayer("You", playerAuthor),
     ai: newPlayer("AI", aiAuthor),
   };
+  verifyDeckAuthorRuntime("player");
+  verifyDeckAuthorRuntime("ai");
   prevBoardUids = { player: new Set(), ai: new Set() };
   refs.log.innerHTML = "";
   hideWinnerBanner();
@@ -2112,12 +2421,13 @@ function applyThemeObjective(ownerKey, card) {
 function applyAuthorCharacterRules(ownerKey, card) {
   const owner = state[ownerKey];
   const profile = AUTHOR_PROFILES[owner.activeAuthor];
-  if (card.author === owner.activeAuthor) {
+  const cardAuthorStatus = getCardAuthorStatus(card, owner);
+  if (cardAuthorStatus === "primary") {
     if (isAuthorKnowledgeBonusEnabled()) {
       addKnowledge(ownerKey, 1, `matched active author ${owner.activeAuthor}`);
     }
     spawnFloatingFx("Author Match", cardElementByUid(card.uid) || panelForOwner(ownerKey), "heal");
-    if (card.themes.includes(profile.bonusTag)) {
+    if (profile?.bonusTag && card.themes.includes(profile.bonusTag)) {
       if (owner.activeAuthor === "Shakespeare") {
         card.attack += 1;
         spawnFloatingFx("+1 ATK", panelForOwner(ownerKey), "heal");
@@ -2127,9 +2437,12 @@ function applyAuthorCharacterRules(ownerKey, card) {
       }
       logEvent(`${card.name} gains ${owner.activeAuthor} passive bonus.`);
     }
-  } else if (card.author === "Shakespeare" || card.author === "Lewis Carroll") {
-    card.currentMemorability = Math.max(1, card.currentMemorability - 1);
-    logEvent(`${card.name} is off-author and enters with -1 MEM.`);
+  } else if (cardAuthorStatus === "off_author" && !isNeutralCard(card)) {
+    const offAuthorPenalty = getOffAuthorPenalty(card, owner);
+    if (offAuthorPenalty?.type === "memorability") {
+      card.currentMemorability = Math.max(1, card.currentMemorability - offAuthorPenalty.value);
+      logEvent(`${card.name} is off-author and enters with -${offAuthorPenalty.value} MEM.`);
+    }
   }
 }
 
@@ -3298,6 +3611,7 @@ window.ACGCore = {
   },
   actions: {
     newGame: initGame,
+    returnToAuthorSelection,
     draw: drawForPlayer,
     endTurn: endPlayerTurn,
     toggleFullscreen: toggleFullscreenMode,
@@ -3346,8 +3660,8 @@ refs.toggleTeacherBtn.addEventListener("click", () => toggleDrawer(refs.teacherP
 refs.toggleRulesBtn.addEventListener("click", () => toggleDrawer(refs.rulesPanel));
 refs.audioToggleBtn.addEventListener("click", toggleSfx);
 refs.teacherApplyBtn.addEventListener("click", applyTeacherSettings);
-refs.newGameBtn.addEventListener("click", showAuthorSelection);
-refs.playAgainBtn.addEventListener("click", showAuthorSelection);
+refs.newGameBtn.addEventListener("click", returnToAuthorSelection);
+refs.playAgainBtn.addEventListener("click", returnToAuthorSelection);
 refs.playerAuthorSelect?.addEventListener("change", updateAuthorSelectionPassive);
 refs.authorSelectConfirmBtn?.addEventListener("click", startMatchFromSelection);
 window.addEventListener(SFX_EVENT_NAME, handleSfxEvent);
