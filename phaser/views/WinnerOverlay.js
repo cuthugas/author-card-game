@@ -87,7 +87,13 @@ export class WinnerOverlay extends Phaser.GameObjects.Container {
     const isVictory = data?.winner === "player";
     this.title.setText(isVictory ? "VICTORY" : "DEFEAT");
     this.title.setColor(isVictory ? "#f5e2b5" : "#f0b8b8");
-    const reason = data?.reason === "knowledge" ? "Knowledge track reached" : "Reputation reduced to zero";
+    const reasonMap = {
+      "knowledge":       "Knowledge Mastery",
+      "reputation":      "Reputation Collapse",
+      "deck-exhaustion": "Literary Legacy",
+      "board-dominance": "Cultural Saturation",
+    };
+    const reason = reasonMap[data?.reason] ?? "Reputation Collapse";
     this.reason.setText(reason);
 
     this.setVisible(true);

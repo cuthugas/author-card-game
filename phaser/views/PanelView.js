@@ -83,18 +83,18 @@ export class PanelView extends Phaser.GameObjects.Container {
   update(data, knowledgeToWin, isActiveTurn) {
     if (this.layoutMode === "phone-player") {
       this.title.setText("YOU");
-      this.primary.setText(`HP ${data.reputation}   IN ${data.inspiration}/${data.maxInspiration}`);
+      this.primary.setText(`REP ${data.reputation}   IN ${data.inspiration}/${data.maxInspiration}`);
       this.secondary.setText("");
     } else if (this.layoutMode === "desktop" || this.layoutMode === "wide") {
       this.title.setText(`${data.name}  -  ${data.author}`);
-      this.primary.setText(`HP ${data.reputation}   IN ${data.inspiration}/${data.maxInspiration}`);
+      this.primary.setText(`REP ${data.reputation}   IN ${data.inspiration}/${data.maxInspiration}`);
       this.secondary.setText(`KNW ${data.knowledge}/${knowledgeToWin}   DECK ${data.deckCount}   HAND ${data.handCount}`);
     } else {
       this.title.setText(`${data.name} - ${data.author}`);
     }
     if (this.layoutMode === "phone") {
       this.title.setText("");
-      this.primary.setText(`HP ${data.reputation}`);
+      this.primary.setText(`REP ${data.reputation}`);
       this.secondary.setText("");
     } else if (this.layoutMode !== "phone-player" && this.layoutMode !== "desktop" && this.layoutMode !== "wide") {
       this.primary.setText(`REP ${data.reputation}   INSP ${data.inspiration}/${data.maxInspiration}`);
