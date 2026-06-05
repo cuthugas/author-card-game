@@ -3182,7 +3182,9 @@ function canAttackWriterDirectly(attackerOwnerKey, attackerUid) {
   const defenderOwner = attackerOwnerKey === "player" ? state?.ai : state?.player;
   const attacker = attackerOwner?.board?.find((card) => card.uid === attackerUid);
   if (!attacker || attacker.exhausted || !defenderOwner) return false;
-  if (defenderOwner.board.length === 0) return true;
+  // Only Bandersnatch can still target the writer directly (special card ability).
+  // When the opponent has no characters, uncontested characters build Reputation
+  // at end of turn instead of attacking the writer directly.
   return isBandersnatch(attacker) && defenderOwner.board.length === 1;
 }
 
@@ -3385,6 +3387,29 @@ function checkWinner() {
   //    (counters are updated there; a win triggers declareWinner directly)
 
   return false;
+}
+
+// Called at the end of each side's turn.
+// For each character on the active side's board that went uncontested this turn
+// (the opponent had no characters), award +1 Reputation to the active side.
+function grantUncontestedReputation(side) {
+  if (state.winner) return;
+  const owner = state[side];
+  const opponent = side === "player" ? state.ai : state.player;
+  if (opponent.board.length > 0 || owner.board.length === 0) return;
+  const gained = owner.board.length;
+  owner.reputation += gained;
+  spawnFloatingFx(`+${gained} REP`, panelForOwner(side), "heal");
+  logEvent(
+    `${owner.name}'s ${owner.board.length} uncontested character${gained === 1 ? "" : "s"} ` +
+    `build${gained === 1 ? "s" : ""} their literary reputation. +${gained} REP.`
+  );
+  logMatchEvent({
+    actor: side,
+    eventType: "reputation_gained",
+    value: gained,
+    details: { reason: "uncontested_board" },
+  });
 }
 
 // Called at the end of each side's turn to update the board dominance counter.
@@ -3635,6 +3660,7 @@ async function finishPlayerTurn() {
     details: { hand: state.player.hand.length, board: state.player.board.length },
   });
   resolveBoardTriggers("player", "onTurnEnd", { side: "player" });
+  grantUncontestedReputation("player");
   updateBoardDominance("player");
   if (state.winner) { render(); return; }
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
@@ -3705,9 +3731,9 @@ async function runAiTurn() {
       attackWriter("ai", attacker.uid);
     } else if (state.player.board.length > 0) {
       attackUnit("ai", attacker.uid, pickLowestMem(state.player.board).uid);
-    } else {
-      attackWriter("ai", attacker.uid);
     }
+    // No enemy characters and no Bandersnatch bypass: character stands uncontested.
+    // Reputation gain is handled at end of turn via grantUncontestedReputation().
     await sleep(420);
   }
 
@@ -3719,6 +3745,7 @@ async function runAiTurn() {
     details: { hand: state.ai.hand.length, board: state.ai.board.length },
   });
   resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
+  grantUncontestedReputation("ai");
   updateBoardDominance("ai");
   if (state.winner) { render(); return; }
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
