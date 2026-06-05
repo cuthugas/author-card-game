@@ -5,6 +5,8 @@ const DEFAULT_KNOWLEDGE_TO_WIN = 10;
 const DEFAULT_QUICK_CHECK_EVERY_TURNS = 3;
 const DEFAULT_ENABLE_THEME_BONUS = false;
 const DEFAULT_ENABLE_AUTHOR_KNOWLEDGE_BONUS = false;
+const DEFAULT_BOARD_DOMINANCE_THRESHOLD = 4; // characters needed on board
+const DEFAULT_BOARD_DOMINANCE_TURNS_REQUIRED = 1; // consecutive turn-ends at threshold to win
 const SFX_EVENT_NAME = "acg:sfx";
 const DEBUG_DOM_UI = Boolean(window.__ACG_DEBUG_DOM_UI);
 const DEV_MATCH_LOG =
@@ -530,7 +532,7 @@ const refs = {
 };
 
 const cardPool = [
-  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, attack: 2, defense: 2, memorability: 3, tags: ["reveal", "knowledge"], themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Turns reflection into insight by reading the situation before acting.", effectText: "On Summon: Reveal a random enemy hand card and gain 1 Knowledge.", triggers: [{ event: "onSummon", effects: [{ type: "revealRandomEnemyHand" }, { type: "gainKnowledge", amount: 1 }] }] },
+  { key: "hamlet", name: "Hamlet", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, attack: 2, defense: 2, memorability: 3, tags: ["reveal", "knowledge"], themes: ["identity", "ambition", "tragedy"], who: "Prince of Denmark from Shakespeare's tragedy Hamlet.", why: "Turns reflection into insight by reading the situation before acting.", effectText: "On Summon: Reveal a random enemy hand card. If a card was revealed, gain 1 Knowledge.", triggers: [{ event: "onSummon", effects: [{ type: "revealRandomEnemyHand" }, { type: "gainKnowledgeIfRevealedThisTurn", amount: 1 }] }] },
   { key: "macbeth", name: "Macbeth", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, attack: 5, defense: 1, memorability: 3, tags: ["pressure"], themes: ["ambition", "power", "tragedy"], who: "Scottish nobleman from Macbeth.", why: "Shows corrupting ambition and consequences of power.", effectText: "None." },
   { key: "juliet", name: "Juliet", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, attack: 2, defense: 1, memorability: 2, tags: ["defeat_trigger", "pressure"], themes: ["identity", "tragedy"], who: "Juliet Capulet from Romeo and Juliet.", why: "A fragile tragic presence whose defeat still pushes the story toward the opposing writer.", effectText: "On Defeat: Deal 1 damage to the enemy Writer.", triggers: [{ event: "onDefeat", effects: [{ type: "dealDamage", target: "enemyWriter", amount: 1 }] }] },
   { key: "lady_macbeth", name: "Lady Macbeth", type: "character", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, attack: 3, defense: 3, memorability: 3, tags: ["pressure", "debuff"], themes: ["ambition", "power", "tragedy"], who: "Macbeth's wife and key instigator.", why: "Applies immediate pressure by unsettling the enemy's best defender.", effectText: "On Summon: Strongest enemy gets -1 ATK and -1 MEM this turn.", triggers: [{ event: "onSummon", effects: [{ type: "weakenHighestEnemyTurn", attack: -1, memorability: -1 }] }] },
@@ -547,14 +549,14 @@ const cardPool = [
   { key: "vorpal_strike", name: "Vorpal Strike", type: "plot", author: "Lewis Carroll", rarity: CARD_RARITIES.LEGENDARY, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 3, effect: "destroy_enemy_lowest_mem", tags: ["control", "pressure"], themes: ["curiosity", "power"], who: "Reference to the Vorpal Sword in Jabberwocky.", why: "Connects nonsense verse and heroic quest language.", effectText: "Destroy weakest enemy character." },
   { key: "o_happy_dagger", name: "O Happy Dagger", type: "artifact", author: "Shakespeare", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 1, effect: "damage_enemy_writer", value: 2, tags: ["pressure"], themes: ["tragedy", "ambition"], who: "Allusion to Juliet's final line in Romeo and Juliet.", why: "Highlights tragic climax and symbolism.", effectText: "Deal 2 to enemy Reputation." },
   { key: "yoricks_skull", name: "Yorick's Skull", type: "artifact", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.BUILDAROUND, cost: 2, effect: "resurrect_character", tags: ["recursion"], themes: ["identity", "tragedy"], who: "Skull held by Hamlet in Act V.", why: "Symbolizes mortality and memory.", effectText: "Return a character from discard to hand." },
-  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "draw_cards", value: 2, tags: ["tempo"], themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "On Play: Draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 2 }] }] },
+  { key: "rabbits_watch", name: "Rabbit's Pocket Watch", type: "artifact", author: "Lewis Carroll", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, tags: ["tempo"], themes: ["curiosity", "wonderland"], who: "White Rabbit's iconic watch.", why: "Introduces urgency and surreal pacing.", effectText: "On Play: Draw 2 cards.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 2 }] }] },
   { key: "revision", name: "Revision", type: "plot", author: "Neutral", supportFamily: "writing_support", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 2, effect: "heal_self", value: 3, tags: ["sustain"], themes: ["identity"], who: "Reworking ideas after feedback.", why: "Shows growth and deeper understanding in writing.", effectText: "Restore 3 Reputation." },
   { key: "deadline_surge", name: "Deadline Surge", type: "plot", author: "Neutral", supportFamily: "writing_support", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "gain_inspiration", value: 2, tags: ["tempo"], themes: ["power", "ambition"], who: "Focused push to finish written work.", why: "Represents urgency and productivity pressure.", effectText: "Gain +2 Inspiration this turn." },
   { key: "hyperbole", name: "Hyperbole", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "buff_friendly_top_attack", value: { attack: 2, memorability: 0 }, tags: ["buff"], themes: [], who: "Deliberate exaggeration for emphasis.", why: "Boosts a standout idea without adding a new targeting system.", effectText: "Strongest ally gains +2 ATK." },
   { key: "internal_conflict", name: "Internal Conflict", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "damage_enemy_by_own_attack", tags: ["control"], themes: ["identity", "tragedy"], who: "A clash within a character that turns their own force against them.", why: "Uses current ATK as the damage source with a stable strongest-enemy fallback.", effectText: "Strongest enemy takes damage equal to its current ATK." },
-  { key: "exposition", name: "Exposition", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "draw_and_gain_knowledge", tags: ["tempo", "knowledge"], themes: ["identity"], who: "Context-setting information that helps a reader understand what comes next.", why: "Pairs a small cantrip effect with steady learning progress.", effectText: "On Play: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
-  { key: "suspense", name: "Suspense", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, effect: "reveal_random_enemy_hand", tags: ["reveal"], themes: [], who: "A tactic that heightens uncertainty before the payoff.", why: "Gives quick information without adding risky discard mechanics.", effectText: "On Play: Reveal a random enemy hand card.", triggers: [{ event: "onPlay", effects: [{ type: "revealRandomEnemyHand" }] }] },
-  { key: "foreshadowing", name: "Foreshadowing", type: "plot", author: "Neutral", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "reveal_enemy_hand_all", tags: ["reveal"], themes: [], who: "Early hints that point toward future events.", why: "Lets you scout the full enemy hand in a simple prototype-safe way.", effectText: "On Play: Reveal all enemy hand cards.", triggers: [{ event: "onPlay", effects: [{ type: "revealEnemyHandAll" }] }] },
+  { key: "exposition", name: "Exposition", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, tags: ["tempo", "knowledge"], themes: ["identity"], who: "Context-setting information that helps a reader understand what comes next.", why: "Pairs a small cantrip effect with steady learning progress.", effectText: "On Play: Draw 1 card and gain 1 Knowledge.", triggers: [{ event: "onPlay", effects: [{ type: "drawCard", amount: 1 }, { type: "gainKnowledge", amount: 1 }] }] },
+  { key: "suspense", name: "Suspense", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STARTER, cost: 1, tags: ["reveal"], themes: [], who: "A tactic that heightens uncertainty before the payoff.", why: "Gives quick information without adding risky discard mechanics.", effectText: "On Play: Reveal a random enemy hand card.", triggers: [{ event: "onPlay", effects: [{ type: "revealRandomEnemyHand" }] }] },
+  { key: "foreshadowing", name: "Foreshadowing", type: "plot", author: "Neutral", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, tags: ["reveal"], themes: [], who: "Early hints that point toward future events.", why: "Lets you scout the full enemy hand in a simple prototype-safe way.", effectText: "On Play: Reveal all enemy hand cards.", triggers: [{ event: "onPlay", effects: [{ type: "revealEnemyHandAll" }] }] },
   { key: "protagonist", name: "Protagonist", type: "plot", author: "Neutral", rarity: CARD_RARITIES.COMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "buff_friendly_top_attack", value: { attack: 1, memorability: 1 }, tags: ["buff", "sustain"], themes: [], who: "A central figure receiving narrative focus and support.", why: "Provides a modest spotlight buff using an existing rule path.", effectText: "Strongest ally gains +1 ATK and +1 MEM." },
   { key: "a_pound_of_flesh", name: "A Pound of Flesh", type: "plot", author: "Shakespeare", rarity: CARD_RARITIES.UNCOMMON, powerBand: CARD_POWER_BANDS.STANDARD, cost: 2, effect: "weaken_enemy_top_defense_turn", tags: ["debuff", "pressure"], themes: ["power", "tragedy"], who: "A merciless demand from The Merchant of Venice.", why: "Temporarily strips defense from the strongest enemy to open a short attack window.", effectText: "Strongest enemy gets -2 DEF this turn." },
   { key: "eat_me_drink_me", name: "Eat Me / Drink Me", type: "artifact", author: "Lewis Carroll", rarity: CARD_RARITIES.RARE, powerBand: CARD_POWER_BANDS.ADVANCED, cost: 2, effect: "swing_target_character_turn", tags: ["buff", "debuff"], themes: ["curiosity", "identity", "wonderland"], who: "Wonderland's size-shifting food and drink.", why: "Uses explicit battlefield targeting so the player can choose who grows or shrinks.", effectText: "Choose a battlefield character. Friendly: +1 ATK/+1 MEM this turn. Enemy: -1 ATK/-1 MEM this turn." },
@@ -582,6 +584,8 @@ function createDefaultSettings() {
     quickCheckEveryTurns: DEFAULT_QUICK_CHECK_EVERY_TURNS,
     enableThemeBonus: DEFAULT_ENABLE_THEME_BONUS,
     enableAuthorKnowledgeBonus: DEFAULT_ENABLE_AUTHOR_KNOWLEDGE_BONUS,
+    boardDominanceThreshold: DEFAULT_BOARD_DOMINANCE_THRESHOLD,
+    boardDominanceTurnsRequired: DEFAULT_BOARD_DOMINANCE_TURNS_REQUIRED,
   };
 }
 
@@ -1052,6 +1056,8 @@ function newPlayer(name, activeAuthor, deckConfigInput = null) {
     discard: [],
     hasDrawnThisTurn: false,
     turnFlags: { revealedEnemyCards: false },
+    deckExhausted: false,
+    boardDominanceTurnsHeld: 0,
   };
 }
 
@@ -1235,6 +1241,7 @@ const VALID_TRIGGER_EFFECT_TYPES = new Set([
   "peekTopDeckAuthorToHand",
   "drawIfRevealedThisTurn",
   "dealDamageIfRevealedThisTurn",
+  "gainKnowledgeIfRevealedThisTurn",
   "drawCardIfKnowledgeAtLeast",
   "weakenHighestEnemyTurn",
 ]);
@@ -1672,6 +1679,14 @@ function resolveTriggerEffect(ownerKey, sourceCard, effect, context = {}) {
         spawnFloatingFx(`+${drawn} card`, panelForOwner(ownerKey), "info");
         logEvent(`${sourceCard.name} rewards revealed information with ${drawn} card(s).`);
       }
+      break;
+    case "gainKnowledgeIfRevealedThisTurn":
+      if (!getTurnFlags(ownerKey).revealedEnemyCards) {
+        logEvent(`${sourceCard.name} finds no revealed information to learn from this turn.`);
+        break;
+      }
+      addKnowledge(ownerKey, amount, `${sourceCard.name} trigger`);
+      spawnFloatingFx(`+${amount} Knowledge`, panelForOwner(ownerKey), "heal");
       break;
     case "dealDamageIfRevealedThisTurn":
       if (!getTurnFlags(ownerKey).revealedEnemyCards) {
@@ -2113,28 +2128,40 @@ function getCardPlayBlockReason(ownerKey, card, gameState = state) {
   const enemyHand = enemy.hand || [];
   const friendlyDiscardCharacters = (owner.discard || []).filter((entry) => entry.type === "character");
 
-  switch (card.effect) {
-    case "buff_friendly_top_attack":
-      if (!friendlyBoard.length) return "needs-friendly-character";
-      break;
-    case "destroy_enemy_lowest_mem":
-    case "damage_enemy_top_attack":
-    case "damage_enemy_by_own_attack":
-    case "weaken_enemy_top_defense_turn":
-      if (!enemyBoard.length) return "needs-enemy-character";
-      break;
-    case "resurrect_character":
-      if (!friendlyDiscardCharacters.length) return "needs-friendly-discard-character";
-      break;
-    case "reveal_random_enemy_hand":
-    case "reveal_enemy_hand_all":
-      if (!enemyHand.length) return "needs-enemy-hand-card";
-      break;
-    case "swing_target_character_turn":
-      if (!friendlyBoard.length && !enemyBoard.length) return "needs-battlefield-character";
-      break;
-    default:
-      break;
+  // Cards that use onPlay triggers are executed via the trigger system, not resolveEffect.
+  // Check trigger effect types first; fall back to card.effect for legacy-only cards.
+  const onPlayTriggerTypes = hasCardTriggers(card, "onPlay")
+    ? getCardTriggers(card, "onPlay").flatMap((t) => t.effects.map((e) => e.type))
+    : null;
+
+  const effectsToCheck = onPlayTriggerTypes ?? [card.effect];
+
+  for (const effectType of effectsToCheck) {
+    switch (effectType) {
+      case "buff_friendly_top_attack":
+        if (!friendlyBoard.length) return "needs-friendly-character";
+        break;
+      case "destroy_enemy_lowest_mem":
+      case "damage_enemy_top_attack":
+      case "damage_enemy_by_own_attack":
+      case "weaken_enemy_top_defense_turn":
+        if (!enemyBoard.length) return "needs-enemy-character";
+        break;
+      case "resurrect_character":
+        if (!friendlyDiscardCharacters.length) return "needs-friendly-discard-character";
+        break;
+      case "revealRandomEnemyHand":
+      case "reveal_random_enemy_hand":
+      case "revealEnemyHandAll":
+      case "reveal_enemy_hand_all":
+        if (!enemyHand.length) return "needs-enemy-hand-card";
+        break;
+      case "swing_target_character_turn":
+        if (!friendlyBoard.length && !enemyBoard.length) return "needs-battlefield-character";
+        break;
+      default:
+        break;
+    }
   }
 
   return null;
@@ -2153,11 +2180,11 @@ function addKnowledge(ownerKey, amount, reason) {
 }
 
 function isThemeBonusEnabled() {
-  return state?.settings?.enableThemeBonus !== false;
+  return state?.settings?.enableThemeBonus === true;
 }
 
 function isAuthorKnowledgeBonusEnabled() {
-  return state?.settings?.enableAuthorKnowledgeBonus !== false;
+  return state?.settings?.enableAuthorKnowledgeBonus === true;
 }
 
 function showWinnerBanner() {
@@ -2165,10 +2192,7 @@ function showWinnerBanner() {
   if (!DEBUG_DOM_UI) {
     phaserUiBridge.winnerHandler?.({
       winner: state.winner,
-      reason:
-        state.player.knowledge >= state.settings.knowledgeToWin || state.ai.knowledge >= state.settings.knowledgeToWin
-          ? "knowledge"
-          : "reputation",
+      reason: arguments[0] || "reputation",
     });
     return;
   }
@@ -2332,7 +2356,8 @@ function drawCards(owner, count = 1) {
   for (let i = 0; i < count; i += 1) {
     if (owner.deck.length === 0) {
       if (owner.discard.length === 0) {
-        logEvent(`${owner.name} cannot draw: no cards left.`);
+        owner.deckExhausted = true;
+        logEvent(`${owner.name} cannot draw: no cards left. Their literary well has run dry.`);
         return drawnCount;
       }
       owner.deck = shuffle(owner.discard);
@@ -3310,36 +3335,80 @@ function cleanupDefeated() {
   } while (foundDefeated);
 }
 
+// WIN CONDITION LABELS — shown in the log and winner banner.
+const WIN_CONDITION_LABELS = {
+  "reputation":       "Reputation Collapse — your rival's work has been torn apart by criticism.",
+  "knowledge":        "Knowledge Mastery — a complete literary understanding achieved.",
+  "deck-exhaustion":  "Literary Legacy — your rival has exhausted every idea they had.",
+  "board-dominance":  "Cultural Saturation — your cast of characters has taken over the literary world.",
+};
+
+function declareWinner(winner, conditionKey) {
+  state.winner = winner;
+  const label = WIN_CONDITION_LABELS[conditionKey] || conditionKey;
+  const outcomeText = winner === "player" ? "You win!" : "AI wins.";
+  logEvent(`${outcomeText} ${label}`);
+  emitSfx("match_end", { winner, reason: conditionKey });
+  showWinnerBanner(conditionKey);
+  finishMatchLog({
+    winner,
+    winCondition: conditionKey,
+    details: {
+      playerReputation: state.player.reputation,
+      aiReputation: state.ai.reputation,
+      playerKnowledge: state.player.knowledge,
+      aiKnowledge: state.ai.knowledge,
+      playerBoard: state.player.board.length,
+      aiBoard: state.ai.board.length,
+    },
+  });
+}
+
 function checkWinner() {
-  const knowledgeToWin = state.settings.knowledgeToWin;
-  if (
-    state.player.reputation <= 0 ||
-    state.ai.reputation <= 0 ||
-    state.player.knowledge >= knowledgeToWin ||
-    state.ai.knowledge >= knowledgeToWin
-  ) {
-    if (state.player.reputation <= 0 || state.ai.knowledge >= knowledgeToWin) state.winner = "ai";
-    else state.winner = "player";
-    const reason =
-      state.player.knowledge >= knowledgeToWin || state.ai.knowledge >= knowledgeToWin
-        ? "knowledge track"
-        : "reputation";
-    logEvent(`Match over by ${reason}: ${state.winner === "player" ? "You win!" : "AI wins."}`);
-    emitSfx("match_end", { winner: state.winner, reason });
-    showWinnerBanner();
-    finishMatchLog({
-      winner: state.winner,
-      winCondition: reason,
-      details: {
-        playerReputation: state.player.reputation,
-        aiReputation: state.ai.reputation,
-        playerKnowledge: state.player.knowledge,
-        aiKnowledge: state.ai.knowledge,
-      },
-    });
-    return true;
-  }
+  if (state.winner) return true;
+
+  const { knowledgeToWin } = state.settings;
+
+  // 1. Reputation Collapse — Reputation hits 0
+  if (state.player.reputation <= 0) { declareWinner("ai",     "reputation"); return true; }
+  if (state.ai.reputation     <= 0) { declareWinner("player", "reputation"); return true; }
+
+  // 2. Knowledge Mastery — reach the Knowledge threshold
+  if (state.ai.knowledge     >= knowledgeToWin) { declareWinner("ai",     "knowledge"); return true; }
+  if (state.player.knowledge >= knowledgeToWin) { declareWinner("player", "knowledge"); return true; }
+
+  // 3. Deck Exhaustion — tried to draw with nothing left anywhere
+  if (state.ai.deckExhausted)     { declareWinner("player", "deck-exhaustion"); return true; }
+  if (state.player.deckExhausted) { declareWinner("ai",     "deck-exhaustion"); return true; }
+
+  // 4. Board Dominance — checked at turn-end via updateBoardDominance()
+  //    (counters are updated there; a win triggers declareWinner directly)
+
   return false;
+}
+
+// Called at the end of each side's turn to update the board dominance counter.
+function updateBoardDominance(side) {
+  if (state.winner) return;
+  const owner = state[side];
+  const { boardDominanceThreshold, boardDominanceTurnsRequired } = state.settings;
+  if (owner.board.length >= boardDominanceThreshold) {
+    owner.boardDominanceTurnsHeld += 1;
+    if (owner.board.length >= boardDominanceThreshold) {
+      logEvent(
+        `${owner.name} holds ${owner.board.length} characters — ` +
+        `${owner.boardDominanceTurnsHeld}/${boardDominanceTurnsRequired} turn(s) toward Cultural Saturation.`
+      );
+    }
+    if (owner.boardDominanceTurnsHeld >= boardDominanceTurnsRequired) {
+      declareWinner(side, "board-dominance");
+    }
+  } else {
+    if (owner.boardDominanceTurnsHeld > 0) {
+      logEvent(`${owner.name}'s board presence drops below ${boardDominanceThreshold}. Dominance streak reset.`);
+    }
+    owner.boardDominanceTurnsHeld = 0;
+  }
 }
 
 function logEvent(text) {
@@ -3566,6 +3635,8 @@ async function finishPlayerTurn() {
     details: { hand: state.player.hand.length, board: state.player.board.length },
   });
   resolveBoardTriggers("player", "onTurnEnd", { side: "player" });
+  updateBoardDominance("player");
+  if (state.winner) { render(); return; }
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
     await runTurnEndQuickCheck("player");
     if (state.winner) return;
@@ -3647,12 +3718,12 @@ async function runAiTurn() {
     eventType: "turn_end",
     details: { hand: state.ai.hand.length, board: state.ai.board.length },
   });
+  resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
+  updateBoardDominance("ai");
+  if (state.winner) { render(); return; }
   if (state.turn % state.settings.quickCheckEveryTurns === 0) {
-    resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
     await runTurnEndQuickCheck("ai");
     if (state.winner) return;
-  } else {
-    resolveBoardTriggers("ai", "onTurnEnd", { side: "ai" });
   }
 
   state.turn += 1;
